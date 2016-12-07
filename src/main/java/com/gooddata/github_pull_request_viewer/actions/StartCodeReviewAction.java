@@ -85,6 +85,8 @@ public class StartCodeReviewAction extends AnAction {
         final CodeReviewService codeReviewService =
                 ServiceManager.getService(project, CodeReviewService.class);
 
+        codeReviewService.setPullRequest(pullRequest);
+
         try {
             GithubUtil.computeValueInModal(project, "Access to GitHub", indicator -> {
                 final GitRepository repository = GithubUtil.getGitRepository(project,
@@ -105,7 +107,7 @@ public class StartCodeReviewAction extends AnAction {
                 indicator.setText("loading pull request diffs");
 
                 try {
-                    final List<Diff> diffs = getPullRequestDiffs(project, pullRequest, githubToken);
+                    final List<Diff> diffs = getPullRequestDiffs(project, githubToken);
                     codeReviewService.setDiffs(diffs);
                 } catch (final Exception ex) {
                     logger.warn(ex);
@@ -161,9 +163,9 @@ public class StartCodeReviewAction extends AnAction {
         }
     }
 
-    private List<Diff> getPullRequestDiffs(final Project project, final PullRequest pullRequest, final String githubToken) throws IOException {
+    private List<Diff> getPullRequestDiffs(final Project project, final String githubToken) throws IOException {
         final GitHubRestService gitHubRestService = ServiceManager.getService(project, GitHubRestService.class);
 
-        return new UnifiedDiffParser().parse(gitHubRestService.getPullRequestDiff(pullRequest, githubToken));
+        return new UnifiedDiffParser().parse(gitHubRestService.getPullRequestDiff(project, githubToken));
     }
 }
