@@ -47,7 +47,7 @@ intellij {
     pluginName 'github-pr-viewer'
     updateSinceUntilBuild false
     downloadSources Boolean.valueOf(downloadIdeaSources)
-    plugins 'git4idea'
+    plugins 'git4idea', 'github'
 
     publish {
         channel ijPluginRepoChannel
