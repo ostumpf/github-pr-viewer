@@ -26,13 +26,18 @@
 
   <extensions defaultExtensionNs="com.intellij">
     <!-- Add your extensions here -->
+    <postStartupActivity implementation="com.gooddata.github_pull_request_viewer.PluginStartupActivity"/>
+
+    <projectService serviceInterface="com.gooddata.github_pull_request_viewer.services.FileHighlightService"
+                    serviceImplementation="com.gooddata.github_pull_request_viewer.services.FileHighlightService"/>
   </extensions>
 
   <actions>
     <!-- Add your actions here -->
-    <action id="ViewGithubPullRequest" class="PullRequestViewer" text="View GitHub Pull Request">
+    <action id="ViewGithubPullRequest" class="com.gooddata.github_pull_request_viewer.actions.StartCodeReviewAction" text="View GitHub Pull Request">
       <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
     </action>
+
   </actions>
 
 </idea-plugin>
