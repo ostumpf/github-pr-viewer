@@ -2,6 +2,7 @@ package com.gooddata.github_pull_request_viewer.services;
 
 import com.gooddata.github_pull_request_viewer.model.HighlightedRow;
 import com.gooddata.github_pull_request_viewer.utils.RegexUtils;
+import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.markup.HighlighterLayer;
@@ -14,7 +15,7 @@ import org.jetbrains.annotations.NotNull;
 import org.wickedsource.diffparser.api.model.Diff;
 import org.wickedsource.diffparser.api.model.Line;
 
-import java.awt.Color;
+import java.awt.*;
 import java.io.File;
 import java.util.HashMap;
 import java.util.List;
@@ -28,18 +29,8 @@ public class FileHighlightService {
     private final TextAttributes backgroundTextAttributes = new TextAttributes();
     private final Map<VirtualFile, Map<Integer, HighlightedRow>> highlightedRowsMap = new HashMap<>();
 
-    private List<Diff> diffs;
-
     public FileHighlightService() {
         backgroundTextAttributes.setBackgroundColor(GREEN);
-    }
-
-    public void setDiffs(final List<Diff> diffs) {
-        this.diffs = diffs;
-    }
-
-    public List<Diff> getDiffs() {
-        return diffs;
     }
 
     public Map<VirtualFile, Map<Integer, HighlightedRow>> getHighlightedRowsMap() {
@@ -55,18 +46,21 @@ public class FileHighlightService {
             return;
         }
 
+        final CodeReviewService codeReviewService =
+                ServiceManager.getService(fileEditorManager.getProject(), CodeReviewService.class);
+
         final Editor textEditor = fileEditorManager.getSelectedTextEditor();
-        final MarkupModel markupModel = textEditor.getMarkupModel();
         final VirtualFile selectedFile = selectedFiles[0];
 
-        if (diffs == null) {
-            clearHiglights(markupModel);
+        if (!codeReviewService.inProgress()) {
+            clearHiglights(textEditor);
             logger.info("action=highlight_file highlights removed");
         } else if (!highlightedRowsMap.containsKey(selectedFile)) {
-            final Optional<Diff> diff = getDiff(selectedFile.getPath(), fileEditorManager.getProject().getBasePath());
+            final Optional<Diff> diff = getDiff(codeReviewService.getDiffs(), selectedFile.getPath(),
+                    fileEditorManager.getProject().getBasePath());
 
             if (diff.isPresent()) {
-                highlightDiff(markupModel, selectedFile, diff.get());
+                highlightDiff(textEditor, selectedFile, diff.get());
                 logger.info("action=highlight_file status=finished");
             } else {
                 logger.warn("action=highlight_file no diff for file " + selectedFile.getPath());
@@ -76,7 +70,9 @@ public class FileHighlightService {
         }
     }
 
-    private void clearHiglights(final MarkupModel markupModel) {
+    private void clearHiglights(final Editor textEditor) {
+        final MarkupModel markupModel = textEditor.getMarkupModel();
+
         highlightedRowsMap.values().stream()
                 .flatMap(m -> m.values().stream())
                 .map(HighlightedRow::getHighlighter)
@@ -84,7 +80,7 @@ public class FileHighlightService {
         highlightedRowsMap.clear();
     }
 
-    private void highlightDiff(final MarkupModel markupModel, final VirtualFile virtualFile, final Diff diff) {
+    private void highlightDiff(final Editor textEditor, final VirtualFile virtualFile, final Diff diff) {
         final String targetCommit = getTargetCommit(diff);
 
         diff.getHunks().forEach(hunk -> {
@@ -93,7 +89,7 @@ public class FileHighlightService {
 
             for (final Line line : hunk.getLines()) {
                 if (line.getLineType().equals(Line.LineType.TO)) {
-                    highlightRow(markupModel, virtualFile, fileLine, diffLine, targetCommit);
+                    highlightRow(textEditor, virtualFile, fileLine, diffLine, targetCommit);
                 }
 
                 if (line.getLineType().equals(Line.LineType.TO) || line.getLineType().equals(Line.LineType.NEUTRAL)) {
@@ -115,24 +111,30 @@ public class FileHighlightService {
         return RegexUtils.getTargetCommit(headers.get(1));
     }
 
-    private void highlightRow(final MarkupModel markupModel, final VirtualFile virtualFile, final int fileLine,
+    private void highlightRow(final Editor textEditor, final VirtualFile virtualFile, final int fileLine,
                               final int diffLine, final String targetCommit) {
+        final MarkupModel markupModel = textEditor.getMarkupModel();
         final RangeHighlighter highlighter =
                 markupModel.addLineHighlighter(fileLine, HighlighterLayer.WARNING + 1, backgroundTextAttributes);
+        final String relativePath = getRelativePath(virtualFile.getPath(), textEditor.getProject().getBasePath());
 
-        final HighlightedRow highlightedRow = new HighlightedRow(fileLine, diffLine, targetCommit, highlighter);
+        final HighlightedRow highlightedRow = new HighlightedRow(fileLine, diffLine, targetCommit, relativePath, highlighter);
 
         highlightedRowsMap.putIfAbsent(virtualFile, new HashMap<>());
         highlightedRowsMap.get(virtualFile).putIfAbsent(fileLine, highlightedRow);
     }
 
-    private Optional<Diff> getDiff(final String absoluteFilePath, final String projectBasePath) {
-        final String relativeFilePath = new File(projectBasePath)
-                .toURI()
-                .relativize(new File(absoluteFilePath).toURI())
-                .toString();
+    private Optional<Diff> getDiff(final List<Diff> diffs, final String absoluteFilePath, final String projectBasePath) {
+        final String relativeFilePath = getRelativePath(absoluteFilePath, projectBasePath);
 
         // TODO differentiate between project base path and git root
         return diffs.stream().filter(diff -> diff.getToFileName().endsWith(relativeFilePath)).findFirst();
+    }
+
+    private String getRelativePath(final String absoluteFilePath, final String projectBasePath) {
+        return new File(projectBasePath)
+                .toURI()
+                .relativize(new File(absoluteFilePath).toURI())
+                .toString();
     }
 }

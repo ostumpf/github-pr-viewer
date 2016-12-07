@@ -1,7 +1,9 @@
 package com.gooddata.github_pull_request_viewer.actions;
 
 import com.gooddata.github_pull_request_viewer.model.HighlightedRow;
+import com.gooddata.github_pull_request_viewer.services.CodeReviewService;
 import com.gooddata.github_pull_request_viewer.services.FileHighlightService;
+import com.gooddata.github_pull_request_viewer.services.GitHubRestService;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.components.ServiceManager;
@@ -23,13 +25,15 @@ public class AddCodeReviewCommentAction extends AnAction {
             return;
         }
 
+        final CodeReviewService codeReviewService =
+                ServiceManager.getService(e.getProject(), CodeReviewService.class);
         final FileHighlightService fileHighlightService =
                 ServiceManager.getService(e.getProject(), FileHighlightService.class);
 
         final int selectedLine = getSelectedLine(e.getProject());
         final VirtualFile selectedFile = getSelectedFile(e.getProject());
 
-        e.getPresentation().setEnabled(fileHighlightService.getDiffs() != null &&
+        e.getPresentation().setEnabled(codeReviewService.inProgress() &&
                 selectedFile != null &&
                 fileHighlightService.getHighlightedRowsMap().containsKey(selectedFile) &&
                 fileHighlightService.getHighlightedRowsMap().get(selectedFile).containsKey(selectedLine));
@@ -45,16 +49,23 @@ public class AddCodeReviewCommentAction extends AnAction {
         logger.info("action=add_comment status=start");
 
         final FileHighlightService fileHighlightService =
-                ServiceManager.getService(e.getProject(),
-                        FileHighlightService.class);
+                ServiceManager.getService(e.getProject(), FileHighlightService.class);
+        final GitHubRestService gitHubRestService =
+                ServiceManager.getService(e.getProject(), GitHubRestService.class);
 
         final int selectedLine = getSelectedLine(e.getProject());
         final VirtualFile selectedFile = getSelectedFile(e.getProject());
         final HighlightedRow highlightedRow = fileHighlightService.getHighlightedRowsMap().get(selectedFile).get(selectedLine);
 
+        final String comment = getCommentText(e.getProject());
 
+        gitHubRestService.postComment(comment, highlightedRow.getCommit(), highlightedRow.getRelativeFilePath(), highlightedRow.getDiffRowNumber());
 
         logger.info("action=add_comment status=finished");
+    }
+
+    private String getCommentText(final Project project) {
+        return null;
     }
 
     private VirtualFile getSelectedFile(final Project project) {

@@ -4,8 +4,10 @@ public class PullRequestSource {
 
     private final String remoteUserName;
     private final String remoteBranch;
+    private final String repoName;
 
-    public PullRequestSource(String remoteUserName, String remoteBranch) {
+    public PullRequestSource(final String repoName, final String remoteUserName, final String remoteBranch) {
+        this.repoName = repoName;
         this.remoteUserName = remoteUserName;
         this.remoteBranch = remoteBranch;
     }
@@ -15,7 +17,7 @@ public class PullRequestSource {
     }
 
     public String getRemoteUrl() {
-        return String.format("git@github.com:%s/a-team-weaponry.git", remoteUserName);
+        return String.format("git@github.com:%s/%s.git", remoteUserName, repoName);
     }
 
     public String getRemoteBranch() {

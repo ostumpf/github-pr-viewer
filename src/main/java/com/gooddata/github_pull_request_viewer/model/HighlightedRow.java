@@ -5,15 +5,17 @@ import com.intellij.openapi.editor.markup.RangeHighlighter;
 public class HighlightedRow {
 
     private final int fileRowNumber;
-    private final int diffRownNumber;
+    private final int diffRowNumber;
+    private final String relativeFilePath;
     private final String commit;
     private final RangeHighlighter highlighter;
 
-    public HighlightedRow(final int fileRowNumber, final int diffRownNumber, final String commit,
-                          final RangeHighlighter highlighter) {
+    public HighlightedRow(final int fileRowNumber, final int diffRowNumber, final String commit,
+                          final String relativeFilePath, final RangeHighlighter highlighter) {
         this.fileRowNumber = fileRowNumber;
-        this.diffRownNumber = diffRownNumber;
+        this.diffRowNumber = diffRowNumber;
         this.commit = commit;
+        this.relativeFilePath = relativeFilePath;
         this.highlighter = highlighter;
     }
 
@@ -21,8 +23,8 @@ public class HighlightedRow {
         return fileRowNumber;
     }
 
-    public int getDiffRownNumber() {
-        return diffRownNumber;
+    public int getDiffRowNumber() {
+        return diffRowNumber;
     }
 
     public String getCommit() {
@@ -31,5 +33,9 @@ public class HighlightedRow {
 
     public RangeHighlighter getHighlighter() {
         return highlighter;
+    }
+
+    public String getRelativeFilePath() {
+        return relativeFilePath;
     }
 }

@@ -1,6 +1,7 @@
 package com.gooddata.github_pull_request_viewer.actions;
 
 import com.gooddata.github_pull_request_viewer.model.PullRequest;
+import com.gooddata.github_pull_request_viewer.services.CodeReviewService;
 import com.gooddata.github_pull_request_viewer.services.FileHighlightService;
 import com.gooddata.github_pull_request_viewer.services.GitHubRestService;
 import com.gooddata.github_pull_request_viewer.utils.Gui;
@@ -61,10 +62,10 @@ public class StartCodeReviewAction extends AnAction {
             return;
         }
 
-        final FileHighlightService fileHighlightService =
-                ServiceManager.getService(e.getProject(), FileHighlightService.class);
+        final CodeReviewService codeReviewService =
+                ServiceManager.getService(e.getProject(), CodeReviewService.class);
 
-        e.getPresentation().setEnabled(fileHighlightService.getDiffs() == null);
+        e.getPresentation().setEnabled(!codeReviewService.inProgress());
     }
 
     @Override
@@ -81,8 +82,11 @@ public class StartCodeReviewAction extends AnAction {
         logger.info("action=start_code_review status=start");
 
         final FileHighlightService fileHighlightService =
-                ServiceManager.getService(project,
-                        FileHighlightService.class);
+                ServiceManager.getService(project, FileHighlightService.class);
+        final CodeReviewService codeReviewService =
+                ServiceManager.getService(project, CodeReviewService.class);
+
+        codeReviewService.setPullRequest(pullRequest);
 
         try {
             GithubUtil.computeValueInModal(project, "Access to GitHub", indicator -> {
@@ -91,13 +95,13 @@ public class StartCodeReviewAction extends AnAction {
 
                 indicator.setFraction(0);
                 indicator.setText("checking github token");
-                final String githubToken = requestGithubToken(indicator);
+                final String githubToken = requestGithubToken(project, indicator);
 
 
                 indicator.setFraction(0.40);
                 indicator.setText("loading pull request diffs");
 
-                loadPullRequestDiffs(project, pullRequest, fileHighlightService, githubToken);
+                loadPullRequestDiffs(project, codeReviewService, githubToken);
 
                 indicator.setText("highlighting the changes");
                 indicator.setFraction(0.90);
@@ -155,15 +159,14 @@ public class StartCodeReviewAction extends AnAction {
     }
 
     private void loadPullRequestDiffs(final Project project,
-                                      final PullRequest pullRequest,
-                                      final FileHighlightService fileHighlightService,
+                                      final CodeReviewService codeReviewService,
                                       final String githubToken) {
         try {
-            final List<Diff> diffs = getPullRequestDiffs(project, pullRequest, githubToken);
-            fileHighlightService.setDiffs(diffs);
+            final List<Diff> diffs = getPullRequestDiffs(project, githubToken);
+            codeReviewService.setDiffs(diffs);
         } catch (final Exception ex) {
             logger.warn(ex);
-            fileHighlightService.setDiffs(null);
+            codeReviewService.setDiffs(null);
 
             Messages.showErrorDialog(project, ex.getMessage(), "Error");
             throw new IllegalStateException("failed to load diffs from pull request");
@@ -180,9 +183,9 @@ public class StartCodeReviewAction extends AnAction {
         }
     }
 
-    private List<Diff> getPullRequestDiffs(final Project project, final PullRequest pullRequest, final String githubToken) throws IOException {
+    private List<Diff> getPullRequestDiffs(final Project project, final String githubToken) throws IOException {
         final GitHubRestService gitHubRestService = ServiceManager.getService(project, GitHubRestService.class);
 
-        return new UnifiedDiffParser().parse(gitHubRestService.getPullRequestDiff(pullRequest, githubToken));
+        return new UnifiedDiffParser().parse(gitHubRestService.getPullRequestDiff(project, githubToken));
     }
 }
