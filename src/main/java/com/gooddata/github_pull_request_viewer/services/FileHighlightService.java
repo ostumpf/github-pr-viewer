@@ -34,6 +34,10 @@ public class FileHighlightService {
         this.diffs = diffs;
     }
 
+    public List<Diff> getDiffs() {
+        return diffs;
+    }
+
     public void highlightFile(@NotNull final FileEditorManager fileEditorManager) {
         logger.info("action=highlight_file status=start");
 

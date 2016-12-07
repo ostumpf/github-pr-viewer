@@ -44,6 +44,19 @@ public class StartCodeReviewAction extends AnAction {
     }*/
 
     @Override
+    public void update(AnActionEvent e) {
+        if (e.getProject() == null) {
+            e.getPresentation().setEnabled(false);
+            return;
+        }
+
+        final FileHighlightService fileHighlightService =
+                ServiceManager.getService(e.getProject(), FileHighlightService.class);
+
+        e.getPresentation().setEnabled(fileHighlightService.getDiffs() == null);
+    }
+
+    @Override
     public void actionPerformed(final AnActionEvent e) {
         if (e.getProject() == null) {
             logger.warn("action=start_code_review the project is null, not doing anything");
