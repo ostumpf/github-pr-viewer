@@ -6,6 +6,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -13,6 +14,9 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.jetbrains.plugins.github.util.GithubAuthData;
 import org.jetbrains.plugins.github.util.GithubSettings;
+import org.jetbrains.plugins.github.util.GithubAuthDataHolder;
+import org.jetbrains.plugins.github.util.GithubNotifications;
+import org.jetbrains.plugins.github.util.GithubUtil;
 import org.wickedsource.diffparser.api.UnifiedDiffParser;
 import org.wickedsource.diffparser.api.model.Diff;
 
@@ -29,6 +33,7 @@ public class StartCodeReviewAction extends AnAction {
 
     private static final Logger logger = Logger.getInstance(StartCodeReviewAction.class);
 
+    private String githubToken;
    /* public static void main(String[] args) {
         try {
             final List<Diff> diffs = new StartCodeReviewAction().getPullRequestDiffs("gooddata", "a-team-weaponry", "106");
@@ -60,7 +65,8 @@ public class StartCodeReviewAction extends AnAction {
 
     @Override
     public void actionPerformed(final AnActionEvent e) {
-        if (e.getProject() == null) {
+        final Project project = e.getProject();
+        if (project == null) {
             logger.warn("action=start_code_review the project is null, not doing anything");
             return;
         }
@@ -72,8 +78,27 @@ public class StartCodeReviewAction extends AnAction {
         logger.info("action=start_code_review status=start");
 
         final FileHighlightService fileHighlightService =
-                ServiceManager.getService(e.getProject(),
+                ServiceManager.getService(project,
                         FileHighlightService.class);
+
+
+        GithubAuthDataHolder authDataHolder;
+        try {
+            GithubUtil.computeValueInModal(project, "Access to GitHub", indicator -> {
+                try {
+                    setGithubToken(GithubUtil.getValidAuthDataHolderFromConfig(project, indicator));
+                } catch (Exception ex1) {
+                    throw new IllegalStateException("failed to retrieve token");
+                }
+            });
+        } catch(IllegalStateException ex) {
+            GithubNotifications.showError(project, "no token",
+                    "Can't load pull request");
+            return;
+        }
+
+
+        GithubNotifications.showInfo(project, "token", "using GitHub token: " + githubToken);
 
         try {
             final List<Diff> diffs = getPullRequestDiffs(repoOwner, repoName, pullRequestId);
@@ -85,10 +110,14 @@ public class StartCodeReviewAction extends AnAction {
             Messages.showErrorDialog(e.getProject(), ex.getMessage(), "Error");
         }
 
-        final FileEditorManager fileEditorManager = FileEditorManager.getInstance(e.getProject());
+        final FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
         fileHighlightService.highlightFile(fileEditorManager);
 
         logger.info("action=start_code_review status=finished");
+    }
+
+    private void setGithubToken(final GithubAuthDataHolder authDataHolder) {
+        githubToken = authDataHolder.getAuthData().getTokenAuth().getToken();
     }
 
     private List<Diff> getPullRequestDiffs(final String repoOwner,
@@ -97,7 +126,6 @@ public class StartCodeReviewAction extends AnAction {
         logger.info(format("action=download_diff status=start repo_owner=%s repo_name=%s pull_request_id=%s",
                 repoOwner, repoName, pullRequestId));
 
-        final String githubToken = tryGetGitHubToken();
         final HttpClient client = HttpClientBuilder.create().build();
         final HttpGet request = new HttpGet(format(GITHUB_API_PR_URL_FORMAT, repoOwner, repoName, pullRequestId));
         request.addHeader("Accept", ACCEPT_V3_DIFF);
