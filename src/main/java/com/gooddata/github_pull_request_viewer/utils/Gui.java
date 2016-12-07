@@ -25,4 +25,18 @@ public class Gui {
                 });
     }
 
+    public static String getCommentText(final Project project) {
+        return Messages.showMultilineInputDialog(project, "Specify the comment body:", "Comment",
+                "", UIUtil.getQuestionIcon(), new InputValidator() {
+                    @Override
+                    public boolean checkInput(String s) {
+                        return s != null && !s.equals("");
+                    }
+
+                    @Override
+                    public boolean canClose(String s) {
+                        return checkInput(s);
+                    }
+                });
+    }
 }

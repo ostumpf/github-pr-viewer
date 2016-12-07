@@ -81,7 +81,7 @@ public class FileHighlightService {
     }
 
     private void highlightDiff(final Editor textEditor, final VirtualFile virtualFile, final Diff diff) {
-        final String targetCommit = getTargetCommit(diff);
+        final String relativePath = getRelativePath(diff);
 
         diff.getHunks().forEach(hunk -> {
             int fileLine = hunk.getToFileRange().getLineStart() - 1; // -1 for 0/1 based counting
@@ -89,7 +89,7 @@ public class FileHighlightService {
 
             for (final Line line : hunk.getLines()) {
                 if (line.getLineType().equals(Line.LineType.TO)) {
-                    highlightRow(textEditor, virtualFile, fileLine, diffLine, targetCommit);
+                    highlightRow(textEditor, virtualFile, relativePath, fileLine, diffLine);
                 }
 
                 if (line.getLineType().equals(Line.LineType.TO) || line.getLineType().equals(Line.LineType.NEUTRAL)) {
@@ -101,24 +101,16 @@ public class FileHighlightService {
         });
     }
 
-    private String getTargetCommit(final Diff diff) {
-        final List<String> headers = diff.getHeaderLines();
-        if (headers.size() < 2) {
-            logger.warn("action=get_target_commit cannot determine target commit for diff");
-            return null;
-        }
-
-        return RegexUtils.getTargetCommit(headers.get(1));
-    }
-
-    private void highlightRow(final Editor textEditor, final VirtualFile virtualFile, final int fileLine,
-                              final int diffLine, final String targetCommit) {
+    private void highlightRow(final Editor textEditor,
+                              final VirtualFile virtualFile,
+                              final String relativePath,
+                              final int fileLine,
+                              final int diffLine) {
         final MarkupModel markupModel = textEditor.getMarkupModel();
         final RangeHighlighter highlighter =
                 markupModel.addLineHighlighter(fileLine, HighlighterLayer.WARNING + 1, backgroundTextAttributes);
-        final String relativePath = getRelativePath(virtualFile.getPath(), textEditor.getProject().getBasePath());
 
-        final HighlightedRow highlightedRow = new HighlightedRow(fileLine, diffLine, targetCommit, relativePath, highlighter);
+        final HighlightedRow highlightedRow = new HighlightedRow(fileLine, diffLine, relativePath, highlighter);
 
         highlightedRowsMap.putIfAbsent(virtualFile, new HashMap<>());
         highlightedRowsMap.get(virtualFile).putIfAbsent(fileLine, highlightedRow);
@@ -136,5 +128,15 @@ public class FileHighlightService {
                 .toURI()
                 .relativize(new File(absoluteFilePath).toURI())
                 .toString();
+    }
+
+    private String getRelativePath(final Diff diff) {
+        final List<String> headers = diff.getHeaderLines();
+        if (headers.size() < 1) {
+            logger.warn("action=get_target_commit cannot determine target commit for diff");
+            return null;
+        }
+
+        return RegexUtils.getRelativeFilePath(headers.get(0));
     }
 }

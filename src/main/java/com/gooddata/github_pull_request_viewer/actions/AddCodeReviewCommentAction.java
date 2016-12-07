@@ -1,9 +1,11 @@
 package com.gooddata.github_pull_request_viewer.actions;
 
+import com.gooddata.github_pull_request_viewer.model.Comment;
 import com.gooddata.github_pull_request_viewer.model.HighlightedRow;
 import com.gooddata.github_pull_request_viewer.services.CodeReviewService;
 import com.gooddata.github_pull_request_viewer.services.FileHighlightService;
 import com.gooddata.github_pull_request_viewer.services.GitHubRestService;
+import com.gooddata.github_pull_request_viewer.utils.Gui;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.components.ServiceManager;
@@ -12,7 +14,10 @@ import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.SelectionModel;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
+
+import java.io.IOException;
 
 public class AddCodeReviewCommentAction extends AnAction {
 
@@ -57,15 +62,23 @@ public class AddCodeReviewCommentAction extends AnAction {
         final VirtualFile selectedFile = getSelectedFile(e.getProject());
         final HighlightedRow highlightedRow = fileHighlightService.getHighlightedRowsMap().get(selectedFile).get(selectedLine);
 
-        final String comment = getCommentText(e.getProject());
+        final String comment = Gui.getCommentText(e.getProject());
 
-        gitHubRestService.postComment(comment, highlightedRow.getCommit(), highlightedRow.getRelativeFilePath(), highlightedRow.getDiffRowNumber());
+        try {
+            final String commit = gitHubRestService.getLastCommit(e.getProject());
+
+            gitHubRestService.postComment(e.getProject(),
+                    new Comment(comment, commit,
+                            highlightedRow.getRelativeFilePath(),
+                            highlightedRow.getDiffRowNumber())
+            );
+
+            Messages.showInfoMessage(e.getProject(), "The comment has been posted", "Success");
+        } catch (IOException ex) {
+            Messages.showErrorDialog(e.getProject(), ex.getMessage(), "Error");
+        }
 
         logger.info("action=add_comment status=finished");
-    }
-
-    private String getCommentText(final Project project) {
-        return null;
     }
 
     private VirtualFile getSelectedFile(final Project project) {

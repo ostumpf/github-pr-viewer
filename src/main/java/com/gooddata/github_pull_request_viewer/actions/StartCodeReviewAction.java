@@ -105,7 +105,7 @@ public class StartCodeReviewAction extends AnAction {
                 highlightChanges(project, fileHighlightService);
 
                 final Git git = ServiceManager.getService(project, Git.class);
-                final PullRequestSource pullRequestSource = getPullRequestSource(project, githubToken);
+                final PullRequestSource pullRequestSource = getPullRequestSource(project);
 
                 indicator.setText("creating a remote");
                 indicator.setFraction(0.91);
@@ -156,11 +156,10 @@ public class StartCodeReviewAction extends AnAction {
                 .fetch(defaultRoot, remoteName, branchName);
     }
 
-    private PullRequestSource getPullRequestSource(final Project project,
-                                                   final String githubToken) {
+    private PullRequestSource getPullRequestSource(final Project project) {
         final GitHubRestService gitHubRestService = ServiceManager.getService(project, GitHubRestService.class);
         try {
-            return gitHubRestService.getPullRequestSource(project, githubToken);
+            return gitHubRestService.getPullRequestSource(project);
         } catch (IOException ex) {
             throw new IllegalStateException("failed to load pull request source info", ex);
         }
@@ -176,7 +175,7 @@ public class StartCodeReviewAction extends AnAction {
     private void loadPullRequestDiffs(final Project project,
                                       final CodeReviewService codeReviewService) {
         try {
-            final List<Diff> diffs = getPullRequestDiffs(project, codeReviewService.getGithubToken());
+            final List<Diff> diffs = getPullRequestDiffs(project);
             codeReviewService.setDiffs(diffs);
         } catch (final Exception ex) {
             logger.warn(ex);
@@ -197,9 +196,9 @@ public class StartCodeReviewAction extends AnAction {
         }
     }
 
-    private List<Diff> getPullRequestDiffs(final Project project, final String githubToken) throws IOException {
+    private List<Diff> getPullRequestDiffs(final Project project) throws IOException {
         final GitHubRestService gitHubRestService = ServiceManager.getService(project, GitHubRestService.class);
 
-        return new UnifiedDiffParser().parse(gitHubRestService.getPullRequestDiff(project, githubToken));
+        return new UnifiedDiffParser().parse(gitHubRestService.getPullRequestDiff(project));
     }
 }

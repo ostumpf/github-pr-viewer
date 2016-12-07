@@ -7,14 +7,12 @@ public class HighlightedRow {
     private final int fileRowNumber;
     private final int diffRowNumber;
     private final String relativeFilePath;
-    private final String commit;
     private final RangeHighlighter highlighter;
 
-    public HighlightedRow(final int fileRowNumber, final int diffRowNumber, final String commit,
+    public HighlightedRow(final int fileRowNumber, final int diffRowNumber,
                           final String relativeFilePath, final RangeHighlighter highlighter) {
         this.fileRowNumber = fileRowNumber;
         this.diffRowNumber = diffRowNumber;
-        this.commit = commit;
         this.relativeFilePath = relativeFilePath;
         this.highlighter = highlighter;
     }
@@ -25,10 +23,6 @@ public class HighlightedRow {
 
     public int getDiffRowNumber() {
         return diffRowNumber;
-    }
-
-    public String getCommit() {
-        return commit;
     }
 
     public RangeHighlighter getHighlighter() {
