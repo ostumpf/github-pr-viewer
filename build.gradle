@@ -32,7 +32,8 @@ sourceSets {
 }
 
 dependencies {
-    compile 'org.wickedsource:diffparser:1.2'
+    compile files('lib/diffparser-1.0.jar')
+//    compile 'org.wickedsource:diffparser:1.2'
     compile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.3.6'
 
     testCompile 'org.testng:testng:6.8.7'

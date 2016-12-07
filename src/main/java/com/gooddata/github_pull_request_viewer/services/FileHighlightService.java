@@ -54,7 +54,7 @@ public class FileHighlightService {
 
         diff.get().getHunks().forEach(hunk -> {
             final int startIndex = hunk.getToFileRange().getLineStart();
-            final int endIndex = startIndex + hunk.getToFileRange().getLineCount();
+            final int endIndex = hunk.getToFileRange().getLineEnd();
             IntStream.rangeClosed(startIndex, endIndex)
                     .forEach(lineNumber -> textEditor.getMarkupModel()
                             .addLineHighlighter(lineNumber, HighlighterLayer.WARNING + 1, backgroundTextAttributes));
