@@ -35,6 +35,7 @@ dependencies {
     compile files('lib/diffparser-1.2.jar')
     compile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.3.6'
     compile group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.6'
+    compile group: 'commons-logging', name: 'commons-logging', version: '1.2'
 
     testCompile 'org.testng:testng:6.8.7'
     testCompile 'org.easymock:easymock:3.2'
