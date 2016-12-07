@@ -6,10 +6,12 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.ui.Messages;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.jetbrains.plugins.github.util.GithubAuthData;
 import org.jetbrains.plugins.github.util.GithubSettings;
 import org.wickedsource.diffparser.api.UnifiedDiffParser;
 import org.wickedsource.diffparser.api.model.Diff;
@@ -76,9 +78,11 @@ public class StartCodeReviewAction extends AnAction {
         try {
             final List<Diff> diffs = getPullRequestDiffs(repoOwner, repoName, pullRequestId);
             fileHighlightService.setDiffs(diffs);
-        } catch (final IOException ex) {
+        } catch (final Exception ex) {
             ex.printStackTrace();
             fileHighlightService.setDiffs(null);
+
+            Messages.showErrorDialog(e.getProject(), ex.getMessage(), "Error");
         }
 
         final FileEditorManager fileEditorManager = FileEditorManager.getInstance(e.getProject());
@@ -93,7 +97,7 @@ public class StartCodeReviewAction extends AnAction {
         logger.info(format("action=download_diff status=start repo_owner=%s repo_name=%s pull_request_id=%s",
                 repoOwner, repoName, pullRequestId));
 
-        final String githubToken = GithubSettings.getInstance().getAuthData().getTokenAuth().getToken();
+        final String githubToken = tryGetGitHubToken();
         final HttpClient client = HttpClientBuilder.create().build();
         final HttpGet request = new HttpGet(format(GITHUB_API_PR_URL_FORMAT, repoOwner, repoName, pullRequestId));
         request.addHeader("Accept", ACCEPT_V3_DIFF);
@@ -101,11 +105,29 @@ public class StartCodeReviewAction extends AnAction {
         request.addHeader("User-Agent", USER_AGENT);
         final HttpResponse response =  client.execute(request);
 
+        if (response.getStatusLine().getStatusCode() != 200) {
+            throw new IllegalStateException("Cannot download the pull request diff from GitHub: " +
+                    response.getStatusLine().toString());
+        }
+
         final List<Diff> diffs = new UnifiedDiffParser().parse(response.getEntity().getContent());
 
         logger.info(format("action=download_diff status=finished repo_owner=%s repo_name=%s pull_request_id=%s",
                 repoOwner, repoName, pullRequestId));
 
         return diffs;
+    }
+
+    private String tryGetGitHubToken() {
+        final GithubAuthData.TokenAuth tokenAuth = GithubSettings.getInstance().getAuthData().getTokenAuth();
+        if (tokenAuth == null) {
+            throw new IllegalStateException("The GitHub Auth Type must be set to Token");
+        }
+
+        if (tokenAuth.getToken().equals("")) {
+            throw new IllegalStateException("The GitHub Token must be non-empty");
+        }
+
+        return tokenAuth.getToken();
     }
 }
