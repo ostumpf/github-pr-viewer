@@ -6,15 +6,28 @@ import com.gooddata.github_pull_request_viewer.utils.Gui;
 import com.gooddata.github_pull_request_viewer.utils.RegexUtils;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
+import com.intellij.openapi.vfs.VirtualFile;
+import git4idea.GitUtil;
+import git4idea.GitVcs;
+import git4idea.branch.GitBranchUtil;
+import git4idea.branch.GitBrancher;
+import git4idea.repo.GitRepository;
+import git4idea.repo.GitRepositoryManager;
+import git4idea.update.GitFetcher;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.github.util.GithubAuthDataHolder;
 import org.jetbrains.plugins.github.util.GithubNotifications;
 import org.jetbrains.plugins.github.util.GithubUtil;
@@ -22,8 +35,10 @@ import org.wickedsource.diffparser.api.UnifiedDiffParser;
 import org.wickedsource.diffparser.api.model.Diff;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
+import static git4idea.actions.GitRepositoryAction.getGitRoots;
 import static java.lang.String.format;
 
 public class StartCodeReviewAction extends AnAction {
@@ -106,6 +121,33 @@ public class StartCodeReviewAction extends AnAction {
 
                 final FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
                 fileHighlightService.highlightFile(fileEditorManager);
+
+                indicator.setText("checking out the branch");
+                indicator.setFraction(0.95);
+
+                // fetch
+                FileDocumentManager.getInstance().saveAllDocuments();
+                final GitVcs vcs = GitVcs.getInstance(project);
+                final List<VirtualFile> gitRoots = getGitRoots(project, vcs);
+                if (gitRoots == null) throw new IllegalStateException("cannot determine git root folder");
+
+                final VirtualFile defaultRoot = GitBranchUtil.getCurrentRepository(project).getRoot();
+                GitVcs.runInBackground(new Task.Backgroundable(project, "Fetching...", true) {
+                    @Override
+                    public void run(@NotNull ProgressIndicator indicator) {
+                        GitRepositoryManager repositoryManager = GitUtil.getRepositoryManager(project);
+                        new GitFetcher(project, indicator, true).fetchRootsAndNotify(GitUtil.getRepositoriesFromRoots(repositoryManager, gitRoots),
+                                null, true);
+                    }
+                });
+
+
+                // checkout
+                final String branchName = "develop";
+                final GitRepository repository = GithubUtil.getGitRepository(project, e.getData(CommonDataKeys.VIRTUAL_FILE));
+                final GitBrancher brancher = ServiceManager.getService(project, GitBrancher.class);
+                brancher.checkout(branchName, Collections.singletonList(repository), null);
+
 
                 indicator.setText("done");
                 indicator.setFraction(1.00);
