@@ -1,6 +1,7 @@
 package com.gooddata.github_pull_request_viewer.actions;
 
 import com.gooddata.github_pull_request_viewer.model.PullRequest;
+import com.gooddata.github_pull_request_viewer.model.PullRequestSource;
 import com.gooddata.github_pull_request_viewer.services.CodeReviewService;
 import com.gooddata.github_pull_request_viewer.services.FileHighlightService;
 import com.gooddata.github_pull_request_viewer.services.GitHubRestService;
@@ -96,50 +97,30 @@ public class StartCodeReviewAction extends AnAction {
                 indicator.setFraction(0);
                 indicator.setText("checking github token");
                 final String githubToken = requestGithubToken(project, indicator);
-
+                codeReviewService.setGithubToken(githubToken);
 
                 indicator.setFraction(0.40);
                 indicator.setText("loading pull request diffs");
-
-                loadPullRequestDiffs(project, codeReviewService, githubToken);
+                loadPullRequestDiffs(project, codeReviewService);
 
                 indicator.setText("highlighting the changes");
                 indicator.setFraction(0.90);
-
                 highlightChanges(project, fileHighlightService);
+
+                final Git git = ServiceManager.getService(project, Git.class);
+                final PullRequestSource pullRequestSource = getPullRequestSource(project, githubToken);
+
+                indicator.setText("creating a remote");
+                indicator.setFraction(0.91);
+                git.addRemote(repository, pullRequestSource.getRemoteUserName(), pullRequestSource.getRemoteUrl());
+
+                indicator.setText("fetching the remote");
+                indicator.setFraction(0.92);
+                fetchRemote(project, pullRequestSource.getRemoteUserName(), pullRequestSource.getRemoteBranch());
 
                 indicator.setText("checking out the branch");
                 indicator.setFraction(0.95);
-
-                indicator.setText("creating a remote");
-                indicator.setFraction(0.96);
-
-                final Git git = ServiceManager.getService(project, Git.class);
-                final String remoteName = "newremote";
-                final String remoteUrl = "git@github.com:gooddata/a-team-weaponry.git";
-                git.addRemote(repository, remoteName, remoteUrl);
-
-                // fetch
-                ApplicationManager.getApplication().invokeLater(BasicAction::saveAll);
-
-                final GitVcs vcs = GitVcs.getInstance(project);
-                final List<VirtualFile> gitRoots = getGitRoots(project, vcs);
-                if (gitRoots == null) throw new IllegalStateException("cannot determine git root folder");
-
-                final VirtualFile defaultRoot = GitBranchUtil.getCurrentRepository(project).getRoot();
-                GitVcs.runInBackground(new Task.Backgroundable(project, "Fetching...", true) {
-                    @Override
-                    public void run(@NotNull ProgressIndicator indicator) {
-                        GitRepositoryManager repositoryManager = GitUtil.getRepositoryManager(project);
-                        new GitFetcher(project, indicator, true).fetchRootsAndNotify(GitUtil.getRepositoriesFromRoots(repositoryManager, gitRoots),
-                                null, true);
-                    }
-                });
-
-                // checkout
-                final String branchName = "develop";
-                final GitBrancher brancher = ServiceManager.getService(project, GitBrancher.class);
-                brancher.checkout(branchName, true, Collections.singletonList(repository), null);
+                checkoutBranch(project, repository, pullRequestSource.getRemoteBranch());
 
                 indicator.setText("done");
                 indicator.setFraction(1.00);
@@ -151,6 +132,44 @@ public class StartCodeReviewAction extends AnAction {
         }
     }
 
+    private void checkoutBranch(final Project project,
+                                final GitRepository repository,
+                                final String branchName) {
+        final GitBrancher brancher = ServiceManager.getService(project, GitBrancher.class);
+        brancher.checkout(branchName,
+                true, Collections.singletonList(repository), null);
+    }
+
+    private void fetchRemote(final Project project, final String remoteName, final String branchName) {
+        ApplicationManager.getApplication().invokeLater(BasicAction::saveAll);
+
+        final GitVcs vcs = GitVcs.getInstance(project);
+        final List<VirtualFile> gitRoots = getGitRoots(project, vcs);
+        if (gitRoots == null) throw new IllegalStateException("cannot determine git root folder");
+
+        final VirtualFile defaultRoot = GitBranchUtil.getCurrentRepository(project).getRoot();
+        GitVcs.runInBackground(new Task.Backgroundable(project, "Fetching...", true) {
+            @Override
+            public void run(@NotNull ProgressIndicator indicator) {
+                GitRepositoryManager repositoryManager = GitUtil.getRepositoryManager(project);
+                new GitFetcher(project, indicator, true).fetch(defaultRoot, remoteName, branchName);
+//                new GitFetcher(project, indicator, true).fetchRootsAndNotify(
+//                        GitUtil.getRepositoriesFromRoots(repositoryManager, gitRoots),
+//                        null, true);
+            }
+        });
+    }
+
+    private PullRequestSource getPullRequestSource(final Project project,
+                                                   final String githubToken) {
+        final GitHubRestService gitHubRestService = ServiceManager.getService(project, GitHubRestService.class);
+        try {
+            return gitHubRestService.getPullRequestSource(project, githubToken);
+        } catch (IOException ex) {
+            throw new IllegalStateException("failed to load pull request source info", ex);
+        }
+    }
+
     private void highlightChanges(final Project project, final FileHighlightService fileHighlightService) {
         final FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
         ApplicationManager.getApplication().invokeLater(() ->
@@ -159,10 +178,9 @@ public class StartCodeReviewAction extends AnAction {
     }
 
     private void loadPullRequestDiffs(final Project project,
-                                      final CodeReviewService codeReviewService,
-                                      final String githubToken) {
+                                      final CodeReviewService codeReviewService) {
         try {
-            final List<Diff> diffs = getPullRequestDiffs(project, githubToken);
+            final List<Diff> diffs = getPullRequestDiffs(project, codeReviewService.getGithubToken());
             codeReviewService.setDiffs(diffs);
         } catch (final Exception ex) {
             logger.warn(ex);

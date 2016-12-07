@@ -7,6 +7,7 @@ import java.util.List;
 
 public class CodeReviewService {
 
+    private String githubToken;
     private PullRequest pullRequest;
     private List<Diff> diffs;
 
@@ -28,5 +29,13 @@ public class CodeReviewService {
 
     public boolean inProgress() {
         return diffs != null;
+    }
+
+    public String getGithubToken() {
+        return githubToken;
+    }
+
+    public void setGithubToken(final String githubToken) {
+        this.githubToken = githubToken;
     }
 }
