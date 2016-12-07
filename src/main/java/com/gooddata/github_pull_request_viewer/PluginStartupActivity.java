@@ -2,6 +2,7 @@ package com.gooddata.github_pull_request_viewer;
 
 import com.gooddata.github_pull_request_viewer.services.FileHighlightService;
 import com.intellij.openapi.components.ServiceManager;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent;
 import com.intellij.openapi.fileEditor.FileEditorManagerListener;
@@ -13,31 +14,33 @@ import org.jetbrains.annotations.NotNull;
 
 public class PluginStartupActivity implements StartupActivity {
 
+    private static final Logger logger = Logger.getInstance(PluginStartupActivity.class);
+
     @Override
     public void runActivity(@NotNull Project project) {
-        System.out.println("action=plugin_startup status=start");
+        logger.info("action=plugin_startup status=start");
 
         final MessageBus messageBus = project.getMessageBus();
         messageBus.connect().subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, new FileEditorListener());
 
-        System.out.println("action=plugin_startup status=finished");
+        logger.info("action=plugin_startup status=finished");
     }
 
     private class FileEditorListener implements FileEditorManagerListener {
 
         @Override
         public void fileOpened(@NotNull FileEditorManager fileEditorManager, @NotNull VirtualFile virtualFile) {
-            System.out.println("action=file_editor_file_opened");
+            logger.info("action=file_editor_file_opened");
         }
 
         @Override
         public void fileClosed(@NotNull FileEditorManager fileEditorManager, @NotNull VirtualFile virtualFile) {
-            System.out.println("action=file_editor_file_closed");
+            logger.info("action=file_editor_file_closed");
         }
 
         @Override
         public void selectionChanged(@NotNull FileEditorManagerEvent fileEditorManagerEvent) {
-            System.out.println("action=file_editor_selection_changed");
+            logger.info("action=file_editor_selection_changed");
 
             final FileHighlightService fileHighlightService =
                     ServiceManager.getService(fileEditorManagerEvent.getManager().getProject(),

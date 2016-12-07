@@ -1,12 +1,12 @@
 package com.gooddata.github_pull_request_viewer.services;
 
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.markup.HighlighterLayer;
 import com.intellij.openapi.editor.markup.MarkupModel;
 import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.ui.JBColor;
 import org.jetbrains.annotations.NotNull;
 import org.wickedsource.diffparser.api.model.Diff;
 import org.wickedsource.diffparser.api.model.Line;
@@ -15,13 +15,14 @@ import java.awt.*;
 import java.io.File;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.IntStream;
 
 public class FileHighlightService {
 
-    private List<Diff> diffs;
+    private static final Logger logger = Logger.getInstance(FileHighlightService.class);
+    private static final Color GREEN = new Color(234, 255, 234);
     private final TextAttributes backgroundTextAttributes;
-    private final Color GREEN = new Color(234, 255, 234);
+
+    private List<Diff> diffs;
 
     public FileHighlightService() {
         backgroundTextAttributes = new TextAttributes();
@@ -33,16 +34,16 @@ public class FileHighlightService {
     }
 
     public void highlightFile(@NotNull final FileEditorManager fileEditorManager) {
-        System.out.println("action=highlight_file status=start");
+        logger.info("action=highlight_file status=start");
 
         final VirtualFile[] selectedFiles = fileEditorManager.getSelectedFiles();
         if (selectedFiles.length != 1) {
-            System.out.println("action=highlight_file Unexpected number of selected files: " + selectedFiles.length);
+            logger.warn("action=highlight_file Unexpected number of selected files: " + selectedFiles.length);
             return;
         }
 
         if (diffs == null) {
-            System.out.println("action=highlight_file No diffs");
+            logger.warn("action=highlight_file No diffs");
             return;
         }
 
@@ -50,7 +51,7 @@ public class FileHighlightService {
         final Optional<Diff> diff = getDiff(selectedFile.getPath(), fileEditorManager.getProject().getBasePath());
 
         if (!diff.isPresent()) {
-            System.out.println("action=highlight_file no diff for file " + selectedFile.getPath());
+            logger.warn("action=highlight_file no diff for file " + selectedFile.getPath());
             return;
         }
 
@@ -70,7 +71,7 @@ public class FileHighlightService {
                 }
             }
         });
-        System.out.println("action=highlight_file status=finished");
+        logger.info("action=highlight_file status=finished");
     }
 
     private Optional<Diff> getDiff(final String absoluteFilePath, final String projectBasePath) {
