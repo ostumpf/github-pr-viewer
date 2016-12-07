@@ -20,6 +20,7 @@ import git4idea.GitUtil;
 import git4idea.GitVcs;
 import git4idea.branch.GitBranchUtil;
 import git4idea.branch.GitBrancher;
+import git4idea.commands.Git;
 import git4idea.repo.GitRepository;
 import git4idea.repo.GitRepositoryManager;
 import git4idea.update.GitFetcher;
@@ -28,6 +29,7 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.plugins.github.util.AuthLevel;
 import org.jetbrains.plugins.github.util.GithubAuthDataHolder;
 import org.jetbrains.plugins.github.util.GithubNotifications;
 import org.jetbrains.plugins.github.util.GithubUtil;
@@ -81,12 +83,15 @@ public class StartCodeReviewAction extends AnAction {
 
         try {
             GithubUtil.computeValueInModal(project, "Access to GitHub", indicator -> {
+                final GitRepository repository = GithubUtil.getGitRepository(project,
+                        e.getData(CommonDataKeys.VIRTUAL_FILE));
                 indicator.setFraction(0);
                 indicator.setText("checking github token");
 
                 final String githubToken;
                 try {
-                    final GithubAuthDataHolder authDataHolder = GithubUtil.getValidAuthDataHolderFromConfig(project, indicator);
+                    final GithubAuthDataHolder authDataHolder = GithubUtil.getValidAuthDataHolderFromConfig(project,
+                            AuthLevel.TOKEN, indicator);
                     githubToken = authDataHolder.getAuthData().getTokenAuth().getToken();
                 } catch (final Exception ex1) {
                     throw new IllegalStateException("failed to retrieve token");
@@ -115,6 +120,12 @@ public class StartCodeReviewAction extends AnAction {
                 indicator.setText("checking out the branch");
                 indicator.setFraction(0.95);
 
+                // remotes
+                final Git git = ServiceManager.getService(project, Git.class);
+                final String remoteName = "newremote";
+                final String remoteUrl = "git@github.com:gooddata/a-team-weaponry.git";
+                git.addRemote(repository, remoteName, remoteUrl);
+
                 // fetch
                 FileDocumentManager.getInstance().saveAllDocuments();
                 final GitVcs vcs = GitVcs.getInstance(project);
@@ -131,17 +142,15 @@ public class StartCodeReviewAction extends AnAction {
                     }
                 });
 
-
                 // checkout
                 final String branchName = "develop";
-                final GitRepository repository = GithubUtil.getGitRepository(project, e.getData(CommonDataKeys.VIRTUAL_FILE));
                 final GitBrancher brancher = ServiceManager.getService(project, GitBrancher.class);
-                brancher.checkout(branchName, Collections.singletonList(repository), null);
-
+                brancher.checkout(branchName, true, Collections.singletonList(repository), null);
 
                 indicator.setText("done");
                 indicator.setFraction(1.00);
                 logger.info("action=start_code_review status=finished");
+                return null;
             });
         } catch(IllegalStateException ex) {
             GithubNotifications.showError(project, "error", ex.getMessage());
