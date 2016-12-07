@@ -1,32 +1,36 @@
 package com.gooddata.github_pull_request_viewer.services;
 
+import com.gooddata.github_pull_request_viewer.model.HighlightedRow;
+import com.gooddata.github_pull_request_viewer.utils.RegexUtils;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.markup.HighlighterLayer;
 import com.intellij.openapi.editor.markup.MarkupModel;
+import com.intellij.openapi.editor.markup.RangeHighlighter;
 import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.fileEditor.FileEditorManager;
-import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.wickedsource.diffparser.api.model.Diff;
 import org.wickedsource.diffparser.api.model.Line;
 
-import java.awt.*;
+import java.awt.Color;
 import java.io.File;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class FileHighlightService {
 
     private static final Logger logger = Logger.getInstance(FileHighlightService.class);
     private static final Color GREEN = new Color(234, 255, 234);
-    private final TextAttributes backgroundTextAttributes;
+    private final TextAttributes backgroundTextAttributes = new TextAttributes();
+    private final Map<VirtualFile, Map<Integer, HighlightedRow>> highlightedRowsMap = new HashMap<>();
 
     private List<Diff> diffs;
 
     public FileHighlightService() {
-        backgroundTextAttributes = new TextAttributes();
         backgroundTextAttributes.setBackgroundColor(GREEN);
     }
 
@@ -49,41 +53,73 @@ public class FileHighlightService {
 
         final Editor textEditor = fileEditorManager.getSelectedTextEditor();
         final MarkupModel markupModel = textEditor.getMarkupModel();
+        final VirtualFile selectedFile = selectedFiles[0];
 
         if (diffs == null) {
             clearHiglights(markupModel);
             logger.info("action=highlight_file highlights removed");
-        } else {
-            final VirtualFile selectedFile = selectedFiles[0];
+        } else if (!highlightedRowsMap.containsKey(selectedFile)) {
             final Optional<Diff> diff = getDiff(selectedFile.getPath(), fileEditorManager.getProject().getBasePath());
 
             if (diff.isPresent()) {
-                highlightDiff(markupModel, diff.get());
+                highlightDiff(markupModel, selectedFile, diff.get());
                 logger.info("action=highlight_file status=finished");
             } else {
                 logger.warn("action=highlight_file no diff for file " + selectedFile.getPath());
             }
+        } else {
+            logger.info("action=highlight_file highlighting already done, skipping");
         }
     }
 
     private void clearHiglights(final MarkupModel markupModel) {
-        markupModel.removeAllHighlighters();
+        highlightedRowsMap.values().stream()
+                .flatMap(m -> m.values().stream())
+                .map(HighlightedRow::getHighlighter)
+                .forEach(markupModel::removeHighlighter);
+        highlightedRowsMap.clear();
     }
 
-    private void highlightDiff(final MarkupModel markupModel, final Diff diff) {
+    private void highlightDiff(final MarkupModel markupModel, final VirtualFile virtualFile, final Diff diff) {
+        final String targetCommit = getTargetCommit(diff);
+
         diff.getHunks().forEach(hunk -> {
-            int lineIndex = hunk.getToFileRange().getLineStart() - 1; // -1 for 0/1 based counting
+            int fileLine = hunk.getToFileRange().getLineStart() - 1; // -1 for 0/1 based counting
+            int diffLine = 1;
 
             for (final Line line : hunk.getLines()) {
                 if (line.getLineType().equals(Line.LineType.TO)) {
-                    markupModel.addLineHighlighter(lineIndex, HighlighterLayer.WARNING + 1, backgroundTextAttributes);
+                    highlightRow(markupModel, virtualFile, fileLine, diffLine, targetCommit);
                 }
 
                 if (line.getLineType().equals(Line.LineType.TO) || line.getLineType().equals(Line.LineType.NEUTRAL)) {
-                    lineIndex++;
+                    fileLine++;
                 }
+
+                diffLine++;
             }
         });
+    }
+
+    private String getTargetCommit(final Diff diff) {
+        final List<String> headers = diff.getHeaderLines();
+        if (headers.size() < 2) {
+            logger.warn("action=get_target_commit cannot determine target commit for diff");
+            return null;
+        }
+
+        return RegexUtils.getTargetCommit(headers.get(1));
+    }
+
+    private void highlightRow(final MarkupModel markupModel, final VirtualFile virtualFile, final int fileLine,
+                              final int diffLine, final String targetCommit) {
+        final RangeHighlighter highlighter =
+                markupModel.addLineHighlighter(fileLine, HighlighterLayer.WARNING + 1, backgroundTextAttributes);
+
+        final HighlightedRow highlightedRow = new HighlightedRow(fileLine, diffLine, targetCommit, highlighter);
+
+        highlightedRowsMap.putIfAbsent(virtualFile, new HashMap<>());
+        highlightedRowsMap.get(virtualFile).putIfAbsent(fileLine, highlightedRow);
     }
 
     private Optional<Diff> getDiff(final String absoluteFilePath, final String projectBasePath) {

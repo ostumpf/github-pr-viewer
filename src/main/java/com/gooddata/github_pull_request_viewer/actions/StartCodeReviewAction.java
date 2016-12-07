@@ -3,7 +3,7 @@ package com.gooddata.github_pull_request_viewer.actions;
 import com.gooddata.github_pull_request_viewer.model.PullRequest;
 import com.gooddata.github_pull_request_viewer.services.FileHighlightService;
 import com.gooddata.github_pull_request_viewer.utils.Gui;
-import com.gooddata.github_pull_request_viewer.utils.UrlUtils;
+import com.gooddata.github_pull_request_viewer.utils.RegexUtils;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.components.ServiceManager;
@@ -34,6 +34,16 @@ public class StartCodeReviewAction extends AnAction {
 
     private static final Logger logger = Logger.getInstance(StartCodeReviewAction.class);
 
+    /*public static void main(String[] args) {
+        try {
+            final List<Diff> diffs = new StartCodeReviewAction().getPullRequestDiffs(new PullRequest("gooddata", "a-team-weaponry", "106"), "");
+            final Diff diff = diffs.get(0);
+            diff.getHeaderLines().forEach(System.out::println);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }*/
+
     @Override
     public void update(AnActionEvent e) {
         if (e.getProject() == null) {
@@ -56,7 +66,7 @@ public class StartCodeReviewAction extends AnAction {
         }
 
         final String pullRequestUrl = Gui.getGitHubPullRequestUrl(e.getProject());
-        final PullRequest pullRequest = UrlUtils.getPullRequest(pullRequestUrl);
+        final PullRequest pullRequest = RegexUtils.getPullRequest(pullRequestUrl);
 
         logger.info("action=start_code_review status=start");
 

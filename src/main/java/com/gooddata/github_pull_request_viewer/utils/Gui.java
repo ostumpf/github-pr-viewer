@@ -5,7 +5,7 @@ import com.intellij.openapi.ui.InputValidator;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.util.ui.UIUtil;
 
-import static com.gooddata.github_pull_request_viewer.utils.UrlUtils.GITHUB_URL_PATTERN;
+import static com.gooddata.github_pull_request_viewer.utils.RegexUtils.GITHUB_URL_PATTERN;
 
 public class Gui {
 
