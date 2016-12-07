@@ -7,10 +7,13 @@ import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.Messages;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.jetbrains.plugins.github.util.GithubAuthData;
+import org.jetbrains.plugins.github.util.GithubSettings;
 import org.jetbrains.plugins.github.util.GithubAuthDataHolder;
 import org.jetbrains.plugins.github.util.GithubNotifications;
 import org.jetbrains.plugins.github.util.GithubUtil;
@@ -31,7 +34,6 @@ public class StartCodeReviewAction extends AnAction {
     private static final Logger logger = Logger.getInstance(StartCodeReviewAction.class);
 
     private String githubToken;
-
    /* public static void main(String[] args) {
         try {
             final List<Diff> diffs = new StartCodeReviewAction().getPullRequestDiffs("gooddata", "a-team-weaponry", "106");
@@ -47,6 +49,19 @@ public class StartCodeReviewAction extends AnAction {
             e.printStackTrace();
         }
     }*/
+
+    @Override
+    public void update(AnActionEvent e) {
+        if (e.getProject() == null) {
+            e.getPresentation().setEnabled(false);
+            return;
+        }
+
+        final FileHighlightService fileHighlightService =
+                ServiceManager.getService(e.getProject(), FileHighlightService.class);
+
+        e.getPresentation().setEnabled(fileHighlightService.getDiffs() == null);
+    }
 
     @Override
     public void actionPerformed(final AnActionEvent e) {
@@ -88,9 +103,11 @@ public class StartCodeReviewAction extends AnAction {
         try {
             final List<Diff> diffs = getPullRequestDiffs(repoOwner, repoName, pullRequestId);
             fileHighlightService.setDiffs(diffs);
-        } catch (final IOException ex) {
+        } catch (final Exception ex) {
             ex.printStackTrace();
             fileHighlightService.setDiffs(null);
+
+            Messages.showErrorDialog(e.getProject(), ex.getMessage(), "Error");
         }
 
         final FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
@@ -116,11 +133,29 @@ public class StartCodeReviewAction extends AnAction {
         request.addHeader("User-Agent", USER_AGENT);
         final HttpResponse response =  client.execute(request);
 
+        if (response.getStatusLine().getStatusCode() != 200) {
+            throw new IllegalStateException("Cannot download the pull request diff from GitHub: " +
+                    response.getStatusLine().toString());
+        }
+
         final List<Diff> diffs = new UnifiedDiffParser().parse(response.getEntity().getContent());
 
         logger.info(format("action=download_diff status=finished repo_owner=%s repo_name=%s pull_request_id=%s",
                 repoOwner, repoName, pullRequestId));
 
         return diffs;
+    }
+
+    private String tryGetGitHubToken() {
+        final GithubAuthData.TokenAuth tokenAuth = GithubSettings.getInstance().getAuthData().getTokenAuth();
+        if (tokenAuth == null) {
+            throw new IllegalStateException("The GitHub Auth Type must be set to Token");
+        }
+
+        if (tokenAuth.getToken().equals("")) {
+            throw new IllegalStateException("The GitHub Token must be non-empty");
+        }
+
+        return tokenAuth.getToken();
     }
 }

@@ -27,7 +27,6 @@
   <depends>Git4Idea</depends>
   <depends>org.jetbrains.plugins.github</depends>
 
-
   <extensions defaultExtensionNs="com.intellij">
     <postStartupActivity implementation="com.gooddata.github_pull_request_viewer.PluginStartupActivity"/>
 
@@ -41,9 +40,14 @@
       <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
     </action>-->
 
-    <action id="StartGithubCodeReview" class="com.gooddata.github_pull_request_viewer.actions.StartCodeReviewAction" text="View GitHub Pull Request">
+    <group id="GithubCodeReviewButtonsGroup" text="GitHub Pull Request" popup="true">
+      <action id="StartGithubCodeReview" class="com.gooddata.github_pull_request_viewer.actions.StartCodeReviewAction" text="Start Code Review"/>
+      <separator/>
+      <action id="StopGithubCodeReview" class="com.gooddata.github_pull_request_viewer.actions.StopCodeReviewAction" text="Stop Code Review"/>
+
       <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
-    </action>
+      <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+    </group>
   </actions>
 
 </idea-plugin>
