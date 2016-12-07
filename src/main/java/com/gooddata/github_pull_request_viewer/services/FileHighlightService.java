@@ -6,6 +6,7 @@ import com.intellij.openapi.editor.markup.HighlighterLayer;
 import com.intellij.openapi.editor.markup.MarkupModel;
 import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.wickedsource.diffparser.api.model.Diff;
@@ -42,23 +43,31 @@ public class FileHighlightService {
             return;
         }
 
-        if (diffs == null) {
-            logger.warn("action=highlight_file No diffs");
-            return;
-        }
-
-        final VirtualFile selectedFile = selectedFiles[0];
-        final Optional<Diff> diff = getDiff(selectedFile.getPath(), fileEditorManager.getProject().getBasePath());
-
-        if (!diff.isPresent()) {
-            logger.warn("action=highlight_file no diff for file " + selectedFile.getPath());
-            return;
-        }
-
         final Editor textEditor = fileEditorManager.getSelectedTextEditor();
         final MarkupModel markupModel = textEditor.getMarkupModel();
 
-        diff.get().getHunks().forEach(hunk -> {
+        if (diffs == null) {
+            clearHiglights(markupModel);
+            logger.info("action=highlight_file highlights removed");
+        } else {
+            final VirtualFile selectedFile = selectedFiles[0];
+            final Optional<Diff> diff = getDiff(selectedFile.getPath(), fileEditorManager.getProject().getBasePath());
+
+            if (diff.isPresent()) {
+                highlightDiff(markupModel, diff.get());
+                logger.info("action=highlight_file status=finished");
+            } else {
+                logger.warn("action=highlight_file no diff for file " + selectedFile.getPath());
+            }
+        }
+    }
+
+    private void clearHiglights(final MarkupModel markupModel) {
+        markupModel.removeAllHighlighters();
+    }
+
+    private void highlightDiff(final MarkupModel markupModel, final Diff diff) {
+        diff.getHunks().forEach(hunk -> {
             int lineIndex = hunk.getToFileRange().getLineStart() - 1; // -1 for 0/1 based counting
 
             for (final Line line : hunk.getLines()) {
@@ -71,7 +80,6 @@ public class FileHighlightService {
                 }
             }
         });
-        logger.info("action=highlight_file status=finished");
     }
 
     private Optional<Diff> getDiff(final String absoluteFilePath, final String projectBasePath) {

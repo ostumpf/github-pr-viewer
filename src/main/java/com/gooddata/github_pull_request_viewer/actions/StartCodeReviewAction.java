@@ -27,8 +27,6 @@ public class StartCodeReviewAction extends AnAction {
 
     private static final Logger logger = Logger.getInstance(StartCodeReviewAction.class);
 
-    private String githubToken;
-
    /* public static void main(String[] args) {
         try {
             final List<Diff> diffs = new StartCodeReviewAction().getPullRequestDiffs("gooddata", "a-team-weaponry", "106");
@@ -82,7 +80,7 @@ public class StartCodeReviewAction extends AnAction {
         logger.info(format("action=download_diff status=start repo_owner=%s repo_name=%s pull_request_id=%s",
                 repoOwner, repoName, pullRequestId));
 
-        githubToken = GithubSettings.getInstance().getAuthData().getTokenAuth().getToken();
+        final String githubToken = GithubSettings.getInstance().getAuthData().getTokenAuth().getToken();
         final HttpClient client = HttpClientBuilder.create().build();
         final HttpGet request = new HttpGet(format(GITHUB_API_PR_URL_FORMAT, repoOwner, repoName, pullRequestId));
         request.addHeader("Accept", ACCEPT_V3_DIFF);
