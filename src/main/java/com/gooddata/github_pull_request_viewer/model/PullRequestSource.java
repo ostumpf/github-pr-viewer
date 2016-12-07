@@ -15,7 +15,7 @@ public class PullRequestSource {
     }
 
     public String getRemoteUrl() {
-        return String.format("git@github.com:%s/github-pr-viewer.git", remoteUserName);
+        return String.format("git@github.com:%s/a-team-weaponry.git", remoteUserName);
     }
 
     public String getRemoteBranch() {

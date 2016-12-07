@@ -8,9 +8,9 @@ import com.gooddata.github_pull_request_viewer.utils.RegexUtils;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
@@ -19,6 +19,7 @@ import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
 import git4idea.GitUtil;
 import git4idea.GitVcs;
+import git4idea.actions.BasicAction;
 import git4idea.branch.GitBranchUtil;
 import git4idea.branch.GitBrancher;
 import git4idea.commands.Git;
@@ -87,49 +88,36 @@ public class StartCodeReviewAction extends AnAction {
             GithubUtil.computeValueInModal(project, "Access to GitHub", indicator -> {
                 final GitRepository repository = GithubUtil.getGitRepository(project,
                         e.getData(CommonDataKeys.VIRTUAL_FILE));
+
                 indicator.setFraction(0);
                 indicator.setText("checking github token");
+                final String githubToken = requestGithubToken(indicator);
 
-                final String githubToken;
-                try {
-                    final GithubAuthDataHolder authDataHolder = GithubUtil.getValidAuthDataHolderFromConfig(project,
-                            AuthLevel.TOKEN, indicator);
-                    githubToken = authDataHolder.getAuthData().getTokenAuth().getToken();
-                } catch (final Exception ex1) {
-                    throw new IllegalStateException("failed to retrieve token");
-                }
 
                 indicator.setFraction(0.40);
                 indicator.setText("loading pull request diffs");
 
-                try {
-                    final List<Diff> diffs = getPullRequestDiffs(project, pullRequest, githubToken);
-                    fileHighlightService.setDiffs(diffs);
-                } catch (final Exception ex) {
-                    logger.warn(ex);
-                    fileHighlightService.setDiffs(null);
-
-                    Messages.showErrorDialog(e.getProject(), ex.getMessage(), "Error");
-                    throw new IllegalStateException("failed to load diffs from pull request");
-                }
+                loadPullRequestDiffs(project, pullRequest, fileHighlightService, githubToken);
 
                 indicator.setText("highlighting the changes");
                 indicator.setFraction(0.90);
 
-                final FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
-                fileHighlightService.highlightFile(fileEditorManager);
+                highlightChanges(project, fileHighlightService);
 
                 indicator.setText("checking out the branch");
                 indicator.setFraction(0.95);
 
-                // remotes
+                indicator.setText("creating a remote");
+                indicator.setFraction(0.96);
+
                 final Git git = ServiceManager.getService(project, Git.class);
                 final String remoteName = "newremote";
                 final String remoteUrl = "git@github.com:gooddata/a-team-weaponry.git";
                 git.addRemote(repository, remoteName, remoteUrl);
 
                 // fetch
-                FileDocumentManager.getInstance().saveAllDocuments();
+                ApplicationManager.getApplication().invokeLater(BasicAction::saveAll);
+
                 final GitVcs vcs = GitVcs.getInstance(project);
                 final List<VirtualFile> gitRoots = getGitRoots(project, vcs);
                 if (gitRoots == null) throw new IllegalStateException("cannot determine git root folder");
@@ -156,6 +144,39 @@ public class StartCodeReviewAction extends AnAction {
             });
         } catch(IllegalStateException ex) {
             GithubNotifications.showError(project, "error", ex.getMessage());
+        }
+    }
+
+    private void highlightChanges(final Project project, final FileHighlightService fileHighlightService) {
+        final FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
+        ApplicationManager.getApplication().invokeLater(() ->
+                fileHighlightService.highlightFile(fileEditorManager)
+        );
+    }
+
+    private void loadPullRequestDiffs(final Project project,
+                                      final PullRequest pullRequest,
+                                      final FileHighlightService fileHighlightService,
+                                      final String githubToken) {
+        try {
+            final List<Diff> diffs = getPullRequestDiffs(project, pullRequest, githubToken);
+            fileHighlightService.setDiffs(diffs);
+        } catch (final Exception ex) {
+            logger.warn(ex);
+            fileHighlightService.setDiffs(null);
+
+            Messages.showErrorDialog(project, ex.getMessage(), "Error");
+            throw new IllegalStateException("failed to load diffs from pull request");
+        }
+    }
+
+    private String requestGithubToken(final Project project, final ProgressIndicator indicator) {
+        try {
+            final GithubAuthDataHolder authDataHolder = GithubUtil.getValidAuthDataHolderFromConfig(project,
+                    AuthLevel.TOKEN, indicator);
+            return authDataHolder.getAuthData().getTokenAuth().getToken();
+        } catch (final Exception ex1) {
+            throw new IllegalStateException("failed to retrieve token");
         }
     }
 
