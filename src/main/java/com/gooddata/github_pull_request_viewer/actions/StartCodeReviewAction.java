@@ -1,6 +1,9 @@
 package com.gooddata.github_pull_request_viewer.actions;
 
+import com.gooddata.github_pull_request_viewer.model.PullRequest;
 import com.gooddata.github_pull_request_viewer.services.FileHighlightService;
+import com.gooddata.github_pull_request_viewer.utils.Gui;
+import com.gooddata.github_pull_request_viewer.utils.UrlUtils;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.components.ServiceManager;
@@ -31,23 +34,6 @@ public class StartCodeReviewAction extends AnAction {
 
     private static final Logger logger = Logger.getInstance(StartCodeReviewAction.class);
 
-    private String githubToken;
-   /* public static void main(String[] args) {
-        try {
-            final List<Diff> diffs = new StartCodeReviewAction().getPullRequestDiffs("gooddata", "a-team-weaponry", "106");
-            diffs.stream()
-                    .filter(d -> d.getFromFileName().endsWith("java/db-users-migration/pom.xml"))
-                    .forEach(d ->
-                            d.getHunks().forEach(hunk -> {
-                                hunk.getLines().forEach(line -> System.out.println(line.getLineType()));
-                                System.out.println(hunk.getToFileRange().getLineStart() + ": " + hunk.getToFileRange().getLineCount());
-                            }));
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }*/
-
     @Override
     public void update(AnActionEvent e) {
         if (e.getProject() == null) {
@@ -69,9 +55,8 @@ public class StartCodeReviewAction extends AnAction {
             return;
         }
 
-        final String repoOwner = "gooddata";
-        final String repoName = "a-team-weaponry";
-        final String pullRequestId = "106";
+        final String pullRequestUrl = Gui.getGitHubPullRequestUrl(e.getProject());
+        final PullRequest pullRequest = UrlUtils.getPullRequest(pullRequestUrl);
 
         logger.info("action=start_code_review status=start");
 
@@ -79,24 +64,24 @@ public class StartCodeReviewAction extends AnAction {
                 ServiceManager.getService(project,
                         FileHighlightService.class);
 
-
         try {
             GithubUtil.computeValueInModal(project, "Access to GitHub", indicator -> {
                 indicator.setFraction(0);
                 indicator.setText("checking github token");
 
+                final String githubToken;
                 try {
-                    setGithubToken(GithubUtil.getValidAuthDataHolderFromConfig(project, indicator));
-                } catch (Exception ex1) {
+                    final GithubAuthDataHolder authDataHolder = GithubUtil.getValidAuthDataHolderFromConfig(project, indicator);
+                    githubToken = authDataHolder.getAuthData().getTokenAuth().getToken();
+                } catch (final Exception ex1) {
                     throw new IllegalStateException("failed to retrieve token");
                 }
 
-//                GithubNotifications.showInfo(project, "token", "using GitHub token: " + githubToken);
                 indicator.setFraction(0.40);
                 indicator.setText("loading pull request diffs");
 
                 try {
-                    final List<Diff> diffs = getPullRequestDiffs(repoOwner, repoName, pullRequestId);
+                    final List<Diff> diffs = getPullRequestDiffs(pullRequest, githubToken);
                     fileHighlightService.setDiffs(diffs);
                 } catch (final Exception ex) {
                     logger.warn(ex);
@@ -117,24 +102,17 @@ public class StartCodeReviewAction extends AnAction {
                 logger.info("action=start_code_review status=finished");
             });
         } catch(IllegalStateException ex) {
-            GithubNotifications.showError(project, "error",
-                    ex.getMessage());
-            return;
+            GithubNotifications.showError(project, "error", ex.getMessage());
         }
     }
 
-    private void setGithubToken(final GithubAuthDataHolder authDataHolder) {
-        githubToken = authDataHolder.getAuthData().getTokenAuth().getToken();
-    }
-
-    private List<Diff> getPullRequestDiffs(final String repoOwner,
-                                           final String repoName,
-                                           final String pullRequestId) throws IOException {
+    private List<Diff> getPullRequestDiffs(final PullRequest pullRequest, final String githubToken) throws IOException {
         logger.info(format("action=download_diff status=start repo_owner=%s repo_name=%s pull_request_id=%s",
-                repoOwner, repoName, pullRequestId));
+                pullRequest.getRepoOwner(), pullRequest.getRepoName(), pullRequest.getPullRequestId()));
 
         final HttpClient client = HttpClientBuilder.create().build();
-        final HttpGet request = new HttpGet(format(GITHUB_API_PR_URL_FORMAT, repoOwner, repoName, pullRequestId));
+        final HttpGet request = new HttpGet(format(GITHUB_API_PR_URL_FORMAT, pullRequest.getRepoOwner(),
+                pullRequest.getRepoName(), pullRequest.getPullRequestId()));
         request.addHeader("Accept", ACCEPT_V3_DIFF);
         request.addHeader("Authorization", "token " + githubToken);
         request.addHeader("User-Agent", USER_AGENT);
@@ -148,7 +126,7 @@ public class StartCodeReviewAction extends AnAction {
         final List<Diff> diffs = new UnifiedDiffParser().parse(response.getEntity().getContent());
 
         logger.info(format("action=download_diff status=finished repo_owner=%s repo_name=%s pull_request_id=%s",
-                repoOwner, repoName, pullRequestId));
+                pullRequest.getRepoOwner(), pullRequest.getRepoName(), pullRequest.getPullRequestId()));
 
         return diffs;
     }
