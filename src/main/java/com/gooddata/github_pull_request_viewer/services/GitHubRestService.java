@@ -44,7 +44,7 @@ public class GitHubRestService {
         return response.getEntity().getContent();
     }
 
-    public void postComment() {
+    public void postComment(final String comment, final String commit, final String relativeFilePath, final int diffRowNumber) {
 
     }
 

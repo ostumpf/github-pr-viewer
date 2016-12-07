@@ -1,5 +1,6 @@
 package com.gooddata.github_pull_request_viewer.actions;
 
+import com.gooddata.github_pull_request_viewer.services.CodeReviewService;
 import com.gooddata.github_pull_request_viewer.services.FileHighlightService;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
@@ -18,10 +19,10 @@ public class StopCodeReviewAction extends AnAction {
             return;
         }
 
-        final FileHighlightService fileHighlightService =
-                ServiceManager.getService(e.getProject(), FileHighlightService.class);
+        final CodeReviewService codeReviewService =
+                ServiceManager.getService(e.getProject(), CodeReviewService.class);
 
-        e.getPresentation().setEnabled(fileHighlightService.getDiffs() != null);
+        e.getPresentation().setEnabled(codeReviewService.inProgress());
     }
 
     @Override
@@ -37,9 +38,12 @@ public class StopCodeReviewAction extends AnAction {
                 ServiceManager.getService(e.getProject(),
                         FileHighlightService.class);
 
+        final CodeReviewService codeReviewService =
+                ServiceManager.getService(e.getProject(), CodeReviewService.class);
+
         final FileEditorManager fileEditorManager = FileEditorManager.getInstance(e.getProject());
 
-        fileHighlightService.setDiffs(null);
+        codeReviewService.setDiffs(null);
         fileHighlightService.highlightFile(fileEditorManager);
 
         logger.info("action=stop_code_review status=finished");

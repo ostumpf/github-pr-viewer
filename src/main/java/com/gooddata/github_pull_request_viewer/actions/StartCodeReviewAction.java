@@ -1,6 +1,7 @@
 package com.gooddata.github_pull_request_viewer.actions;
 
 import com.gooddata.github_pull_request_viewer.model.PullRequest;
+import com.gooddata.github_pull_request_viewer.services.CodeReviewService;
 import com.gooddata.github_pull_request_viewer.services.FileHighlightService;
 import com.gooddata.github_pull_request_viewer.services.GitHubRestService;
 import com.gooddata.github_pull_request_viewer.utils.Gui;
@@ -58,10 +59,10 @@ public class StartCodeReviewAction extends AnAction {
             return;
         }
 
-        final FileHighlightService fileHighlightService =
-                ServiceManager.getService(e.getProject(), FileHighlightService.class);
+        final CodeReviewService codeReviewService =
+                ServiceManager.getService(e.getProject(), CodeReviewService.class);
 
-        e.getPresentation().setEnabled(fileHighlightService.getDiffs() == null);
+        e.getPresentation().setEnabled(!codeReviewService.inProgress());
     }
 
     @Override
@@ -78,8 +79,9 @@ public class StartCodeReviewAction extends AnAction {
         logger.info("action=start_code_review status=start");
 
         final FileHighlightService fileHighlightService =
-                ServiceManager.getService(project,
-                        FileHighlightService.class);
+                ServiceManager.getService(project, FileHighlightService.class);
+        final CodeReviewService codeReviewService =
+                ServiceManager.getService(project, CodeReviewService.class);
 
         try {
             GithubUtil.computeValueInModal(project, "Access to GitHub", indicator -> {
@@ -99,10 +101,10 @@ public class StartCodeReviewAction extends AnAction {
 
                 try {
                     final List<Diff> diffs = getPullRequestDiffs(project, pullRequest, githubToken);
-                    fileHighlightService.setDiffs(diffs);
+                    codeReviewService.setDiffs(diffs);
                 } catch (final Exception ex) {
                     logger.warn(ex);
-                    fileHighlightService.setDiffs(null);
+                    codeReviewService.setDiffs(null);
 
                     Messages.showErrorDialog(e.getProject(), ex.getMessage(), "Error");
                     throw new IllegalStateException("failed to load diffs from pull request");
