@@ -42,6 +42,10 @@ public class FileHighlightService {
         return diffs;
     }
 
+    public Map<VirtualFile, Map<Integer, HighlightedRow>> getHighlightedRowsMap() {
+        return highlightedRowsMap;
+    }
+
     public void highlightFile(@NotNull final FileEditorManager fileEditorManager) {
         logger.info("action=highlight_file status=start");
 

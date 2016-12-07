@@ -35,6 +35,8 @@
 
     <projectService serviceInterface="com.gooddata.github_pull_request_viewer.services.FileHighlightService"
                     serviceImplementation="com.gooddata.github_pull_request_viewer.services.FileHighlightService"/>
+    <projectService serviceInterface="com.gooddata.github_pull_request_viewer.services.GitHubRestService"
+                    serviceImplementation="com.gooddata.github_pull_request_viewer.services.GitHubRestService"/>
   </extensions>
 
   <actions>
@@ -43,13 +45,26 @@
       <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
     </action>-->
 
-    <group id="GithubCodeReviewButtonsGroup" text="GitHub Pull Request" popup="true">
-      <action id="StartGithubCodeReview" class="com.gooddata.github_pull_request_viewer.actions.StartCodeReviewAction" text="Start Code Review"/>
+    <action id="StartGithubCodeReview" class="com.gooddata.github_pull_request_viewer.actions.StartCodeReviewAction" text="Start Code Review"/>
+    <action id="AddCodeReviewComment" class="com.gooddata.github_pull_request_viewer.actions.AddCodeReviewCommentAction" text="Add Comment"/>
+    <action id="StopGithubCodeReview" class="com.gooddata.github_pull_request_viewer.actions.StopCodeReviewAction" text="Stop Code Review"/>
+
+    <group id="GithubCodeReviewEditorMenuGroup" text="GitHub Pull Request" popup="true">
+      <reference ref="StartGithubCodeReview"/>
       <separator/>
-      <action id="StopGithubCodeReview" class="com.gooddata.github_pull_request_viewer.actions.StopCodeReviewAction" text="Stop Code Review"/>
+      <reference ref="AddCodeReviewComment"/>
+      <separator/>
+      <reference ref="StopGithubCodeReview"/>
+
+      <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+    </group>
+
+    <group id="GithubCodeReviewProjectViewMenuGroup" text="GitHub Pull Request" popup="true">
+      <reference ref="StartGithubCodeReview"/>
+      <separator/>
+      <reference ref="StopGithubCodeReview"/>
 
       <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
-      <add-to-group group-id="EditorPopupMenu" anchor="last"/>
     </group>
   </actions>
 
