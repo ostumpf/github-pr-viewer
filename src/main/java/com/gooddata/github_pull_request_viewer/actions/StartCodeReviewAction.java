@@ -12,8 +12,6 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.HttpClientBuilder;
-import org.jetbrains.plugins.github.util.GithubAuthData;
-import org.jetbrains.plugins.github.util.GithubSettings;
 import org.jetbrains.plugins.github.util.GithubAuthDataHolder;
 import org.jetbrains.plugins.github.util.GithubNotifications;
 import org.jetbrains.plugins.github.util.GithubUtil;
@@ -84,35 +82,45 @@ public class StartCodeReviewAction extends AnAction {
 
         try {
             GithubUtil.computeValueInModal(project, "Access to GitHub", indicator -> {
+                indicator.setFraction(0);
+                indicator.setText("checking github token");
+
                 try {
                     setGithubToken(GithubUtil.getValidAuthDataHolderFromConfig(project, indicator));
                 } catch (Exception ex1) {
                     throw new IllegalStateException("failed to retrieve token");
                 }
+
+//                GithubNotifications.showInfo(project, "token", "using GitHub token: " + githubToken);
+                indicator.setFraction(0.40);
+                indicator.setText("loading pull request diffs");
+
+                try {
+                    final List<Diff> diffs = getPullRequestDiffs(repoOwner, repoName, pullRequestId);
+                    fileHighlightService.setDiffs(diffs);
+                } catch (final Exception ex) {
+                    logger.warn(ex);
+                    fileHighlightService.setDiffs(null);
+
+                    Messages.showErrorDialog(e.getProject(), ex.getMessage(), "Error");
+                    throw new IllegalStateException("failed to load diffs from pull request");
+                }
+
+                indicator.setText("highlighting the changes");
+                indicator.setFraction(0.90);
+
+                final FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
+                fileHighlightService.highlightFile(fileEditorManager);
+
+                indicator.setText("done");
+                indicator.setFraction(1.00);
+                logger.info("action=start_code_review status=finished");
             });
         } catch(IllegalStateException ex) {
-            GithubNotifications.showError(project, "no token",
-                    "Can't load pull request");
+            GithubNotifications.showError(project, "error",
+                    ex.getMessage());
             return;
         }
-
-
-        GithubNotifications.showInfo(project, "token", "using GitHub token: " + githubToken);
-
-        try {
-            final List<Diff> diffs = getPullRequestDiffs(repoOwner, repoName, pullRequestId);
-            fileHighlightService.setDiffs(diffs);
-        } catch (final Exception ex) {
-            ex.printStackTrace();
-            fileHighlightService.setDiffs(null);
-
-            Messages.showErrorDialog(e.getProject(), ex.getMessage(), "Error");
-        }
-
-        final FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
-        fileHighlightService.highlightFile(fileEditorManager);
-
-        logger.info("action=start_code_review status=finished");
     }
 
     private void setGithubToken(final GithubAuthDataHolder authDataHolder) {
