@@ -3,11 +3,14 @@ package com.gooddata.github_pull_request_viewer.actions;
 import com.gooddata.github_pull_request_viewer.services.FileHighlightService;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
+import git4idea.branch.GitBrancher;
+import git4idea.repo.GitRepository;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -19,6 +22,7 @@ import org.wickedsource.diffparser.api.UnifiedDiffParser;
 import org.wickedsource.diffparser.api.model.Diff;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 import static java.lang.String.format;
@@ -111,6 +115,15 @@ public class StartCodeReviewAction extends AnAction {
 
                 final FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
                 fileHighlightService.highlightFile(fileEditorManager);
+
+                indicator.setText("checking out the branch");
+                indicator.setFraction(0.95);
+
+                final String branchName = "develop";
+                final GitRepository repository = GithubUtil.getGitRepository(project, e.getData(CommonDataKeys.VIRTUAL_FILE));
+                final GitBrancher brancher = ServiceManager.getService(project, GitBrancher.class);
+                brancher.checkout(branchName, Collections.singletonList(repository), null);
+
 
                 indicator.setText("done");
                 indicator.setFraction(1.00);
