@@ -16,7 +16,7 @@
   </change-notes>
 
   <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
-  <idea-version since-build="145.0"/>
+  <idea-version since-build="139.0"/>
 
   <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
        on how to target different products -->
@@ -25,12 +25,19 @@
   -->
 
   <extensions defaultExtensionNs="com.intellij">
-    <!-- Add your extensions here -->
+    <postStartupActivity implementation="com.gooddata.github_pull_request_viewer.PluginStartupActivity"/>
+
+    <projectService serviceInterface="com.gooddata.github_pull_request_viewer.services.FileHighlightService"
+                    serviceImplementation="com.gooddata.github_pull_request_viewer.services.FileHighlightService"/>
   </extensions>
 
   <actions>
     <!-- Add your actions here -->
-    <action id="ViewGithubPullRequest" class="PRViewer" text="View GitHub Pull Request">
+    <!--<action id="ViewGithubPullRequest" class="PRViewer" text="View GitHub Pull Request">
+      <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+    </action>-->
+
+    <action id="StartGithubCodeReview" class="com.gooddata.github_pull_request_viewer.actions.StartCodeReviewAction" text="View GitHub Pull Request">
       <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
     </action>
   </actions>

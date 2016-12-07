@@ -22,13 +22,12 @@ public class StartCodeReviewAction extends AnAction {
     private static final String GITHUB_API_PR_URL_FORMAT = "https://api.github.com/repos/%s/%s/pulls/%s";
     private static final String ACCEPT_V3_DIFF = "application/vnd.github.v3.diff";
 
-    private final String githubToken = "0123d16d45b3ecfe622aae92197d8711c8b69b86";
+    private final String githubToken = "TODO";
     private final String githubUsername = "ostumpf";
 
     /*public static void main(String[] args) {
         new StartCodeReviewAction().actionPerformed(null);
-    }
-*/
+    }*/
 
     @Override
     public void actionPerformed(final AnActionEvent e) {

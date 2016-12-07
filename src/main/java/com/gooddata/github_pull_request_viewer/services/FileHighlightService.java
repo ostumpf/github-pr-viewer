@@ -9,6 +9,7 @@ import com.intellij.ui.JBColor;
 import org.jetbrains.annotations.NotNull;
 import org.wickedsource.diffparser.api.model.Diff;
 
+import java.awt.*;
 import java.io.File;
 import java.util.List;
 import java.util.Optional;
@@ -18,10 +19,11 @@ public class FileHighlightService {
 
     private List<Diff> diffs;
     private final TextAttributes backgroundTextAttributes;
+    private final Color GREEN = new Color(234, 255, 234);
 
     public FileHighlightService() {
         backgroundTextAttributes = new TextAttributes();
-        backgroundTextAttributes.setBackgroundColor(JBColor.orange);
+        backgroundTextAttributes.setBackgroundColor(GREEN);
     }
 
     public void setDiffs(final List<Diff> diffs) {
@@ -54,7 +56,7 @@ public class FileHighlightService {
 
         diff.get().getHunks().forEach(hunk -> {
             final int startIndex = hunk.getToFileRange().getLineStart();
-            final int endIndex = hunk.getToFileRange().getLineEnd();
+            final int endIndex = startIndex + hunk.getToFileRange().getLineCount();
             IntStream.rangeClosed(startIndex, endIndex)
                     .forEach(lineNumber -> textEditor.getMarkupModel()
                             .addLineHighlighter(lineNumber, HighlighterLayer.WARNING + 1, backgroundTextAttributes));
