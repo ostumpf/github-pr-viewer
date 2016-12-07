@@ -18,11 +18,15 @@
   <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
   <idea-version since-build="139.0"/>
 
+
   <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
        on how to target different products -->
   <!-- uncomment to enable plugin in all products
   <depends>com.intellij.modules.lang</depends>
   -->
+  <depends>Git4Idea</depends>
+  <depends>org.jetbrains.plugins.github</depends>
+
 
   <extensions defaultExtensionNs="com.intellij">
     <postStartupActivity implementation="com.gooddata.github_pull_request_viewer.PluginStartupActivity"/>
