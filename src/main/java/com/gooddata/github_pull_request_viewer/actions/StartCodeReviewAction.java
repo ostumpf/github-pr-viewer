@@ -14,21 +14,18 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
-import git4idea.GitUtil;
 import git4idea.GitVcs;
 import git4idea.actions.BasicAction;
 import git4idea.branch.GitBranchUtil;
 import git4idea.branch.GitBrancher;
 import git4idea.commands.Git;
 import git4idea.repo.GitRepository;
-import git4idea.repo.GitRepositoryManager;
 import git4idea.update.GitFetcher;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.github.util.AuthLevel;
 import org.jetbrains.plugins.github.util.GithubAuthDataHolder;
 import org.jetbrains.plugins.github.util.GithubNotifications;
@@ -113,6 +110,7 @@ public class StartCodeReviewAction extends AnAction {
                 indicator.setText("creating a remote");
                 indicator.setFraction(0.91);
                 git.addRemote(repository, pullRequestSource.getRemoteUserName(), pullRequestSource.getRemoteUrl());
+                sleep();
 
                 indicator.setText("fetching the remote");
                 indicator.setFraction(0.92);
@@ -132,11 +130,17 @@ public class StartCodeReviewAction extends AnAction {
         }
     }
 
+    private void sleep() {
+        try {
+            Thread.sleep(500l);
+        } catch (final InterruptedException ignored) {}
+    }
+
     private void checkoutBranch(final Project project,
                                 final GitRepository repository,
                                 final String branchName) {
-        final GitBrancher brancher = ServiceManager.getService(project, GitBrancher.class);
-        brancher.checkout(branchName,
+        ServiceManager.getService(project, GitBrancher.class)
+                .checkout(branchName,
                 true, Collections.singletonList(repository), null);
     }
 
@@ -148,16 +152,8 @@ public class StartCodeReviewAction extends AnAction {
         if (gitRoots == null) throw new IllegalStateException("cannot determine git root folder");
 
         final VirtualFile defaultRoot = GitBranchUtil.getCurrentRepository(project).getRoot();
-        GitVcs.runInBackground(new Task.Backgroundable(project, "Fetching...", true) {
-            @Override
-            public void run(@NotNull ProgressIndicator indicator) {
-                GitRepositoryManager repositoryManager = GitUtil.getRepositoryManager(project);
-                new GitFetcher(project, indicator, true).fetch(defaultRoot, remoteName, branchName);
-//                new GitFetcher(project, indicator, true).fetchRootsAndNotify(
-//                        GitUtil.getRepositoriesFromRoots(repositoryManager, gitRoots),
-//                        null, true);
-            }
-        });
+        new GitFetcher(project, new EmptyProgressIndicator(), true)
+                .fetch(defaultRoot, remoteName, branchName);
     }
 
     private PullRequestSource getPullRequestSource(final Project project,
