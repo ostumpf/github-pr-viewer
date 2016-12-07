@@ -25,8 +25,20 @@ public class StartCodeReviewAction extends AnAction {
     private final String githubToken = "TODO";
     private final String githubUsername = "ostumpf";
 
-    /*public static void main(String[] args) {
-        new StartCodeReviewAction().actionPerformed(null);
+   /* public static void main(String[] args) {
+        try {
+            final List<Diff> diffs = new StartCodeReviewAction().getPullRequestDiffs("gooddata", "a-team-weaponry", "106");
+            diffs.stream()
+                    .filter(d -> d.getFromFileName().endsWith("java/db-users-migration/pom.xml"))
+                    .forEach(d ->
+                            d.getHunks().forEach(hunk -> {
+                                hunk.getLines().forEach(line -> System.out.println(line.getLineType()));
+                                System.out.println(hunk.getToFileRange().getLineStart() + ": " + hunk.getToFileRange().getLineCount());
+                            }));
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }*/
 
     @Override

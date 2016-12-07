@@ -2,12 +2,14 @@ package com.gooddata.github_pull_request_viewer.services;
 
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.markup.HighlighterLayer;
+import com.intellij.openapi.editor.markup.MarkupModel;
 import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.JBColor;
 import org.jetbrains.annotations.NotNull;
 import org.wickedsource.diffparser.api.model.Diff;
+import org.wickedsource.diffparser.api.model.Line;
 
 import java.awt.*;
 import java.io.File;
@@ -53,13 +55,20 @@ public class FileHighlightService {
         }
 
         final Editor textEditor = fileEditorManager.getSelectedTextEditor();
+        final MarkupModel markupModel = textEditor.getMarkupModel();
 
         diff.get().getHunks().forEach(hunk -> {
-            final int startIndex = hunk.getToFileRange().getLineStart();
-            final int endIndex = startIndex + hunk.getToFileRange().getLineCount();
-            IntStream.rangeClosed(startIndex, endIndex)
-                    .forEach(lineNumber -> textEditor.getMarkupModel()
-                            .addLineHighlighter(lineNumber, HighlighterLayer.WARNING + 1, backgroundTextAttributes));
+            int lineIndex = hunk.getToFileRange().getLineStart() - 1; // -1 for 0/1 based counting
+
+            for (final Line line : hunk.getLines()) {
+                if (line.getLineType().equals(Line.LineType.TO)) {
+                    markupModel.addLineHighlighter(lineIndex, HighlighterLayer.WARNING + 1, backgroundTextAttributes);
+                }
+
+                if (line.getLineType().equals(Line.LineType.TO) || line.getLineType().equals(Line.LineType.NEUTRAL)) {
+                    lineIndex++;
+                }
+            }
         });
         System.out.println("action=highlight_file status=finished");
     }
@@ -70,6 +79,7 @@ public class FileHighlightService {
                 .relativize(new File(absoluteFilePath).toURI())
                 .toString();
 
+        // TODO differentiate between project base path and git root
         return diffs.stream().filter(diff -> diff.getToFileName().endsWith(relativeFilePath)).findFirst();
     }
 }
