@@ -82,7 +82,6 @@ public class StartCodeReviewAction extends AnAction {
                         FileHighlightService.class);
 
 
-        GithubAuthDataHolder authDataHolder;
         try {
             GithubUtil.computeValueInModal(project, "Access to GitHub", indicator -> {
                 try {
@@ -144,18 +143,5 @@ public class StartCodeReviewAction extends AnAction {
                 repoOwner, repoName, pullRequestId));
 
         return diffs;
-    }
-
-    private String tryGetGitHubToken() {
-        final GithubAuthData.TokenAuth tokenAuth = GithubSettings.getInstance().getAuthData().getTokenAuth();
-        if (tokenAuth == null) {
-            throw new IllegalStateException("The GitHub Auth Type must be set to Token");
-        }
-
-        if (tokenAuth.getToken().equals("")) {
-            throw new IllegalStateException("The GitHub Token must be non-empty");
-        }
-
-        return tokenAuth.getToken();
     }
 }
