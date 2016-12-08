@@ -94,7 +94,7 @@ public class FileHighlightService {
                 .stream()
                 .map(Optional::get)
                 .forEach(c -> {
-                    int fileLine = getFileLine(c.getPosition(), c.getPath(), codeReviewService, fileEditorManager);
+                    int fileLine = getFileLine(c.getPosition(), c.getPath(), codeReviewService);
                     RangeHighlighter highlighter =
                             markupModel.addLineHighlighter(fileLine, HighlighterLayer.FIRST, null);
                     addGutterIcon(highlighter, "[" + c.getUser().getUsername()  +"]: " + c.getBody());
@@ -102,14 +102,13 @@ public class FileHighlightService {
     }
 
     private int getFileLine(final int position, final String relativePath,
-                            final CodeReviewService codeReviewService,
-                            final FileEditorManager fileEditorManager) {
-        final Optional<Diff> diffOptional = getDiff(codeReviewService.getDiffs(), relativePath, fileEditorManager.getProject().getBasePath());
+                            final CodeReviewService codeReviewService) {
+        final Optional<Diff> diffOptional = getDiff(codeReviewService.getDiffs(), relativePath);
+        int diffLine = 1;
 
         if (diffOptional.isPresent()) {
             for (final Hunk hunk : diffOptional.get().getHunks()) {
                 int fileLine = hunk.getToFileRange().getLineStart() - 1; // -1 for 0/1 based counting
-                int diffLine = 1;
 
                 for (final Line line : hunk.getLines()) {
                     if (line.getLineType().equals(Line.LineType.TO) || line.getLineType().equals(Line.LineType.NEUTRAL)) {
@@ -166,20 +165,17 @@ public class FileHighlightService {
     private void clearHiglights(final Editor textEditor, final CodeReviewService codeReviewService) {
         final MarkupModel markupModel = textEditor.getMarkupModel();
 
-        codeReviewService.getHighlightedRowsMap().values().stream()
-                .flatMap(m -> m.values().stream())
-                .map(HighlightedRow::getHighlighter)
-                .forEach(markupModel::removeHighlighter);
+        markupModel.removeAllHighlighters();
         codeReviewService.getHighlightedRowsMap().clear();
     }
 
     private void highlightDiff(final Editor textEditor, final CodeReviewService codeReviewService,
                                final VirtualFile virtualFile, final Diff diff) {
         final String relativePath = codeReviewService.getRelativePath(diff);
+        int diffLine = 1;
 
-        diff.getHunks().forEach(hunk -> {
+        for (final Hunk hunk : diff.getHunks()) {
             int fileLine = hunk.getToFileRange().getLineStart() - 1; // -1 for 0/1 based counting
-            int diffLine = 1;
 
             for (final Line line : hunk.getLines()) {
                 if (line.getLineType().equals(Line.LineType.TO)) {
@@ -192,7 +188,7 @@ public class FileHighlightService {
 
                 diffLine++;
             }
-        });
+        }
     }
 
     private void highlightRow(final Editor textEditor,
@@ -215,6 +211,10 @@ public class FileHighlightService {
                                    final String projectBasePath) {
         final String relativeFilePath = getRelativePath(absoluteFilePath, projectBasePath);
 
+        return getDiff(diffs, relativeFilePath);
+    }
+
+    private Optional<Diff> getDiff(final List<Diff> diffs, final String relativeFilePath) {
         // TODO differentiate between project base path and git root
         return diffs.stream().filter(diff -> diff.getToFileName().endsWith(relativeFilePath)).findFirst();
     }
@@ -224,7 +224,7 @@ public class FileHighlightService {
                                                        final String projectBasePath) {
         final String relativeFilePath = getRelativePath(absoluteFilePath, projectBasePath);
 
-        return allComments.stream().filter(c -> relativeFilePath.endsWith(c.getPath())).collect(Collectors.toList());
+        return allComments.stream().filter(c -> c.getPath().endsWith(relativeFilePath)).collect(Collectors.toList());
     }
 
     private String getRelativePath(final String absoluteFilePath, final String projectBasePath) {
