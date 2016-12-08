@@ -9,7 +9,6 @@ import com.gooddata.github_pull_request_viewer.utils.Gui;
 import com.gooddata.github_pull_request_viewer.utils.RegexUtils;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.diagnostic.Logger;
