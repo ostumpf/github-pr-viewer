@@ -43,16 +43,6 @@ public class StartCodeReviewAction extends AnAction {
 
     private static final Logger logger = Logger.getInstance(StartCodeReviewAction.class);
 
-    /*public static void main(String[] args) {
-        try {
-            final List<Diff> diffs = new StartCodeReviewAction().getPullRequestDiffs(new PullRequest("gooddata", "a-team-weaponry", "106"), "");
-            final Diff diff = diffs.get(0);
-            diff.getHeaderLines().forEach(System.out::println);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }*/
-
     @Override
     public void update(AnActionEvent e) {
         if (e.getProject() == null) {
@@ -101,29 +91,29 @@ public class StartCodeReviewAction extends AnAction {
                 final String githubToken = requestGithubToken(project, indicator);
                 codeReviewService.setGithubToken(githubToken);
 
-                indicator.setFraction(0.40);
+                final Git git = ServiceManager.getService(project, Git.class);
+                final PullRequestSource pullRequestSource = getPullRequestSource(project);
+
+                indicator.setText("creating a remote");
+                indicator.setFraction(0.01);
+                git.addRemote(repository, pullRequestSource.getRemoteUserName(), pullRequestSource.getRemoteUrl());
+                sleep();
+
+                indicator.setText("fetching the remote");
+                indicator.setFraction(0.02);
+                fetchRemote(project, pullRequestSource.getRemoteUserName(), pullRequestSource.getRemoteBranch());
+
+                indicator.setText("checking out the branch");
+                indicator.setFraction(0.3);
+                checkoutBranch(project, repository, pullRequestSource.getRemoteBranch());
+
+                indicator.setFraction(0.60);
                 indicator.setText("loading pull request diffs");
                 loadPullRequestDiffs(project, codeReviewService);
 
                 indicator.setText("highlighting the changes");
                 indicator.setFraction(0.90);
                 highlightChanges(project, fileHighlightService);
-
-                final Git git = ServiceManager.getService(project, Git.class);
-                final PullRequestSource pullRequestSource = getPullRequestSource(project);
-
-                indicator.setText("creating a remote");
-                indicator.setFraction(0.91);
-                git.addRemote(repository, pullRequestSource.getRemoteUserName(), pullRequestSource.getRemoteUrl());
-                sleep();
-
-                indicator.setText("fetching the remote");
-                indicator.setFraction(0.92);
-                fetchRemote(project, pullRequestSource.getRemoteUserName(), pullRequestSource.getRemoteBranch());
-
-                indicator.setText("checking out the branch");
-                indicator.setFraction(0.95);
-                checkoutBranch(project, repository, pullRequestSource.getRemoteBranch());
 
                 indicator.setText("done");
                 indicator.setFraction(1.00);

@@ -42,11 +42,6 @@
   </extensions>
 
   <actions>
-    <!-- Add your actions here -->
-    <!--<action id="ViewGithubPullRequest" class="PRViewer" text="View GitHub Pull Request">
-      <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
-    </action>-->
-
     <action id="StartGithubCodeReview" class="com.gooddata.github_pull_request_viewer.actions.StartCodeReviewAction" text="Start Code Review"
             description="Prompts for GitHub Pull Request URL and highlights modified/added rows in the code editor">
       <keyboard-shortcut first-keystroke="control shift c" second-keystroke="control shift s" keymap="$default"/>
