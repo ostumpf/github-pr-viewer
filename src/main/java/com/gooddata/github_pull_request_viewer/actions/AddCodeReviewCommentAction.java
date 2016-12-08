@@ -6,6 +6,9 @@ import com.gooddata.github_pull_request_viewer.services.CodeReviewService;
 import com.gooddata.github_pull_request_viewer.services.FileHighlightService;
 import com.gooddata.github_pull_request_viewer.services.GitHubRestService;
 import com.gooddata.github_pull_request_viewer.utils.Gui;
+import com.intellij.notification.Notification;
+import com.intellij.notification.NotificationType;
+import com.intellij.notification.Notifications;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.components.ServiceManager;
@@ -16,6 +19,7 @@ import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.util.ui.UIUtil;
 
 import java.io.IOException;
 
@@ -77,7 +81,8 @@ public class AddCodeReviewCommentAction extends AnAction {
                             highlightedRow.getDiffRowNumber())
             );
 
-            Messages.showInfoMessage(e.getProject(), "The comment has been posted", "Success");
+            Notifications.Bus.notify(new Notification("githubPrRequestViewer", "Success", "The comment has been posted",
+                    NotificationType.INFORMATION), e.getProject());
         } catch (IOException ex) {
             Messages.showErrorDialog(e.getProject(), ex.getMessage(), "Error");
         }
