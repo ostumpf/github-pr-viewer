@@ -72,12 +72,12 @@ public class FileHighlightService {
             }
 
             if (!fileComments.isEmpty()) {
-                highlightComments(textEditor, fileComments);
+                highlightComments(textEditor, fileComments, codeReviewService);
             }
         }
     }
 
-    public void highlightComments(@NotNull final Editor textEditor, final List<DownloadedComment> comments) {
+    public void highlightComments(@NotNull final Editor textEditor, final List<DownloadedComment> comments, final CodeReviewService codeReviewService) {
         MarkupModel markupModel = textEditor.getMarkupModel();
 
 
@@ -94,6 +94,10 @@ public class FileHighlightService {
                             markupModel.addLineHighlighter(c.getLineNumber(), HighlighterLayer.FIRST, null);
                     addGutterIcon(highlighter, c.getBody());
                 });
+    }
+
+    private int getFileLine(final int position, final String relativePath, final CodeReviewService codeReviewService) {
+
     }
 
     private void addGutterIcon(RangeHighlighter rangeHighlighter, final String messageBody) {
