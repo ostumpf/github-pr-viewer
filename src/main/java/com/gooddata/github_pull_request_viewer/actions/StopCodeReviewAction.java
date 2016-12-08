@@ -34,17 +34,10 @@ public class StopCodeReviewAction extends AnAction {
 
         logger.info("action=stop_code_review status=start");
 
-        final FileHighlightService fileHighlightService =
-                ServiceManager.getService(e.getProject(),
-                        FileHighlightService.class);
-
         final CodeReviewService codeReviewService =
                 ServiceManager.getService(e.getProject(), CodeReviewService.class);
 
-        final FileEditorManager fileEditorManager = FileEditorManager.getInstance(e.getProject());
-
-        codeReviewService.setDiffs(null);
-        fileHighlightService.highlightFile(fileEditorManager);
+        codeReviewService.stopCodeReview(e.getProject());
 
         logger.info("action=stop_code_review status=finished");
     }

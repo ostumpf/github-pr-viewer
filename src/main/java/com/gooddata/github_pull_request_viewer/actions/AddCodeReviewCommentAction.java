@@ -3,9 +3,11 @@ package com.gooddata.github_pull_request_viewer.actions;
 import com.gooddata.github_pull_request_viewer.model.Comment;
 import com.gooddata.github_pull_request_viewer.model.HighlightedRow;
 import com.gooddata.github_pull_request_viewer.services.CodeReviewService;
-import com.gooddata.github_pull_request_viewer.services.FileHighlightService;
 import com.gooddata.github_pull_request_viewer.services.GitHubRestService;
 import com.gooddata.github_pull_request_viewer.utils.Gui;
+import com.intellij.notification.Notification;
+import com.intellij.notification.NotificationType;
+import com.intellij.notification.Notifications;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.components.ServiceManager;
@@ -32,16 +34,14 @@ public class AddCodeReviewCommentAction extends AnAction {
 
         final CodeReviewService codeReviewService =
                 ServiceManager.getService(e.getProject(), CodeReviewService.class);
-        final FileHighlightService fileHighlightService =
-                ServiceManager.getService(e.getProject(), FileHighlightService.class);
 
         final int selectedLine = getSelectedLine(e.getProject());
         final VirtualFile selectedFile = getSelectedFile(e.getProject());
 
         e.getPresentation().setEnabled(codeReviewService.inProgress() &&
                 selectedFile != null &&
-                fileHighlightService.getHighlightedRowsMap().containsKey(selectedFile) &&
-                fileHighlightService.getHighlightedRowsMap().get(selectedFile).containsKey(selectedLine));
+                codeReviewService.getHighlightedRowsMap().containsKey(selectedFile) &&
+                codeReviewService.getHighlightedRowsMap().get(selectedFile).containsKey(selectedLine));
     }
 
     @Override
@@ -53,16 +53,20 @@ public class AddCodeReviewCommentAction extends AnAction {
 
         logger.info("action=add_comment status=start");
 
-        final FileHighlightService fileHighlightService =
-                ServiceManager.getService(e.getProject(), FileHighlightService.class);
+        final CodeReviewService codeReviewService =
+                ServiceManager.getService(e.getProject(), CodeReviewService.class);
         final GitHubRestService gitHubRestService =
                 ServiceManager.getService(e.getProject(), GitHubRestService.class);
 
         final int selectedLine = getSelectedLine(e.getProject());
         final VirtualFile selectedFile = getSelectedFile(e.getProject());
-        final HighlightedRow highlightedRow = fileHighlightService.getHighlightedRowsMap().get(selectedFile).get(selectedLine);
+        final HighlightedRow highlightedRow = codeReviewService.getHighlightedRowsMap().get(selectedFile).get(selectedLine);
 
         final String comment = Gui.getCommentText(e.getProject());
+        if (comment == null) {
+            logger.info("action=add_comment status=finished User cancelled");
+            return;
+        }
 
         try {
             final String commit = gitHubRestService.getLastCommit(e.getProject());
@@ -73,7 +77,8 @@ public class AddCodeReviewCommentAction extends AnAction {
                             highlightedRow.getDiffRowNumber())
             );
 
-            Messages.showInfoMessage(e.getProject(), "The comment has been posted", "Success");
+            Notifications.Bus.notify(new Notification("githubPrRequestViewer", "Success", "The comment has been posted",
+                    NotificationType.INFORMATION), e.getProject());
         } catch (IOException ex) {
             Messages.showErrorDialog(e.getProject(), ex.getMessage(), "Error");
         }

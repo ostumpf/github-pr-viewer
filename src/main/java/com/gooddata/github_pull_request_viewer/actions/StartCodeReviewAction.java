@@ -11,7 +11,6 @@ import com.gooddata.github_pull_request_viewer.utils.Gui;
 import com.gooddata.github_pull_request_viewer.utils.RegexUtils;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.diagnostic.Logger;
@@ -19,7 +18,6 @@ import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
 import git4idea.GitVcs;
 import git4idea.actions.BasicAction;
@@ -28,7 +26,9 @@ import git4idea.branch.GitBrancher;
 import git4idea.commands.Git;
 import git4idea.repo.GitRepository;
 import git4idea.update.GitFetcher;
+import org.apache.commons.net.util.Base64;
 import org.jetbrains.plugins.github.util.AuthLevel;
+import org.jetbrains.plugins.github.util.GithubAuthData;
 import org.jetbrains.plugins.github.util.GithubAuthDataHolder;
 import org.jetbrains.plugins.github.util.GithubNotifications;
 import org.jetbrains.plugins.github.util.GithubUtil;
@@ -45,16 +45,6 @@ import static git4idea.actions.GitRepositoryAction.getGitRoots;
 public class StartCodeReviewAction extends AnAction {
 
     private static final Logger logger = Logger.getInstance(StartCodeReviewAction.class);
-
-    /*public static void main(String[] args) {
-        try {
-            final List<Diff> diffs = new StartCodeReviewAction().getPullRequestDiffs(new PullRequest("gooddata", "a-team-weaponry", "106"), "");
-            final Diff diff = diffs.get(0);
-            diff.getHeaderLines().forEach(System.out::println);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }*/
 
     @Override
     public void update(AnActionEvent e) {
@@ -78,6 +68,11 @@ public class StartCodeReviewAction extends AnAction {
         }
 
         final String pullRequestUrl = Gui.getGitHubPullRequestUrl(e.getProject());
+        if (pullRequestUrl == null) {
+            logger.warn("action=start_code_review User cancelled");
+            return;
+        }
+
         final PullRequest pullRequest = RegexUtils.getPullRequest(pullRequestUrl);
 
         logger.info("action=start_code_review status=start");
@@ -91,17 +86,32 @@ public class StartCodeReviewAction extends AnAction {
 
         codeReviewService.setPullRequest(pullRequest);
 
-        try {
-            GithubUtil.computeValueInModal(project, "Access to GitHub", indicator -> {
-                final GitRepository repository = GithubUtil.getGitRepository(project,
-                        e.getData(CommonDataKeys.VIRTUAL_FILE));
+        final GitRepository repository = GithubUtil.getGitRepository(project, null);
 
+        GithubUtil.computeValueInModal(project, "Access to GitHub", indicator -> {
+            try {
                 indicator.setFraction(0);
-                indicator.setText("checking github token");
-                final String githubToken = requestGithubToken(project, indicator);
-                codeReviewService.setGithubToken(githubToken);
+                indicator.setText("checking github authorization");
+                final String githubAuthorization = requestGithubAuthorization(project, indicator);
+                codeReviewService.setGithubAuthorization(githubAuthorization);
 
-                indicator.setFraction(0.40);
+                final Git git = ServiceManager.getService(project, Git.class);
+                final PullRequestSource pullRequestSource = getPullRequestSource(project);
+
+                indicator.setText("creating a remote");
+                indicator.setFraction(0.01);
+                git.addRemote(repository, pullRequestSource.getRemoteUserName(), pullRequestSource.getRemoteUrl());
+                sleep();
+
+                indicator.setText("fetching the remote");
+                indicator.setFraction(0.02);
+                fetchRemote(project, pullRequestSource.getRemoteUserName(), pullRequestSource.getRemoteBranch());
+
+                indicator.setText("checking out the branch");
+                indicator.setFraction(0.3);
+                checkoutBranch(project, repository, pullRequestSource.getRemoteBranch());
+
+                indicator.setFraction(0.60);
                 indicator.setText("loading pull request diffs");
                 loadPullRequestDiffs(project, codeReviewService);
 
@@ -113,31 +123,17 @@ public class StartCodeReviewAction extends AnAction {
                 indicator.setFraction(0.90);
                 highlightChanges(project, fileHighlightService);
 
-                final Git git = ServiceManager.getService(project, Git.class);
-                final PullRequestSource pullRequestSource = getPullRequestSource(project);
-
-                indicator.setText("creating a remote");
-                indicator.setFraction(0.91);
-                git.addRemote(repository, pullRequestSource.getRemoteUserName(), pullRequestSource.getRemoteUrl());
-                sleep();
-
-                indicator.setText("fetching the remote");
-                indicator.setFraction(0.92);
-                fetchRemote(project, pullRequestSource.getRemoteUserName(), pullRequestSource.getRemoteBranch());
-
-                indicator.setText("checking out the branch");
-                indicator.setFraction(0.95);
-                checkoutBranch(project, repository, pullRequestSource.getRemoteBranch());
-
                 indicator.setText("done");
                 indicator.setFraction(1.00);
                 logger.info("action=start_code_review status=finished");
 
-                return null;
-            });
-        } catch(IllegalStateException ex) {
-            GithubNotifications.showError(project, "error", ex.getMessage());
-        }
+            } catch (final Exception ex) {
+                GithubNotifications.showError(project, "error", ex.getMessage());
+                codeReviewService.stopCodeReview(project);
+            }
+
+            return null;
+        });
     }
 
     private void sleep() {
@@ -166,13 +162,10 @@ public class StartCodeReviewAction extends AnAction {
                 .fetch(defaultRoot, remoteName, branchName);
     }
 
-    private PullRequestSource getPullRequestSource(final Project project) {
+    private PullRequestSource getPullRequestSource(final Project project) throws IOException {
         final GitHubRestService gitHubRestService = ServiceManager.getService(project, GitHubRestService.class);
-        try {
-            return gitHubRestService.getPullRequestSource(project);
-        } catch (IOException ex) {
-            throw new IllegalStateException("failed to load pull request source info", ex);
-        }
+
+        return gitHubRestService.getPullRequestSource(project);
     }
 
     private void highlightChanges(final Project project, final FileHighlightService fileHighlightService) {
@@ -183,26 +176,22 @@ public class StartCodeReviewAction extends AnAction {
     }
 
     private void loadPullRequestDiffs(final Project project,
-                                      final CodeReviewService codeReviewService) {
-        try {
-            final List<Diff> diffs = getPullRequestDiffs(project);
-            codeReviewService.setDiffs(diffs);
-        } catch (final Exception ex) {
-            logger.warn(ex);
-            codeReviewService.setDiffs(null);
-
-            Messages.showErrorDialog(project, ex.getMessage(), "Error");
-            throw new IllegalStateException("failed to load diffs from pull request");
-        }
+                                      final CodeReviewService codeReviewService) throws IOException {
+        final List<Diff> diffs = getPullRequestDiffs(project);
+        codeReviewService.setDiffs(diffs);
     }
 
-    private String requestGithubToken(final Project project, final ProgressIndicator indicator) {
-        try {
-            final GithubAuthDataHolder authDataHolder = GithubUtil.getValidAuthDataHolderFromConfig(project,
-                    AuthLevel.TOKEN, indicator);
-            return authDataHolder.getAuthData().getTokenAuth().getToken();
-        } catch (final Exception ex1) {
-            throw new IllegalStateException("failed to retrieve token");
+    private String requestGithubAuthorization(final Project project, final ProgressIndicator indicator) throws IOException {
+        final GithubAuthDataHolder authDataHolder = GithubUtil.getValidAuthDataHolderFromConfig(project,
+                AuthLevel.ANY, indicator);
+        if (authDataHolder.getAuthData().getAuthType().equals(GithubAuthData.AuthType.BASIC)) {
+            final GithubAuthData.BasicAuth basicAuth = authDataHolder.getAuthData().getBasicAuth();
+            return "Basic " + new String(Base64.encodeBase64((basicAuth.getLogin() + ":" + basicAuth.getPassword()).getBytes()));
+        } else if (authDataHolder.getAuthData().getAuthType().equals(GithubAuthData.AuthType.TOKEN)) {
+            final GithubAuthData.TokenAuth tokenAuth = authDataHolder.getAuthData().getTokenAuth();
+            return "token " + tokenAuth.getToken();
+        } else {
+            throw new IllegalStateException("Failed to retrieve authorization: must be BASIC or TOKEN");
         }
     }
 
