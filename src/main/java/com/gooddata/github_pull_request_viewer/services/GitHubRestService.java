@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gooddata.github_pull_request_viewer.model.Comment;
+import com.gooddata.github_pull_request_viewer.model.DownloadedComment;
 import com.gooddata.github_pull_request_viewer.model.PullRequest;
 import com.gooddata.github_pull_request_viewer.model.PullRequestSource;
 import com.intellij.openapi.components.ServiceManager;
@@ -86,7 +87,7 @@ public class GitHubRestService {
         }
     }
 
-    public List<Comment> getComments(final Project project) throws IOException {
+    public List<DownloadedComment> getComments(final Project project) throws IOException {
         final CodeReviewService codeReviewService =
                 ServiceManager.getService(project, CodeReviewService.class);
 
@@ -184,12 +185,12 @@ public class GitHubRestService {
         return lastNode.path("sha").textValue();
     }
 
-    private List<Comment> parseComments(final InputStream inputStream) throws IOException {
+    private List<DownloadedComment> parseComments(final InputStream inputStream) throws IOException {
         final ObjectMapper objectMapper = new ObjectMapper();
         final StringWriter stringWriter = new StringWriter();
 
         IOUtils.copy(inputStream, stringWriter, Charset.defaultCharset());
-        return objectMapper.readValue(stringWriter.toString(), new TypeReference<List<Comment>>() {});
+        return objectMapper.readValue(stringWriter.toString(), new TypeReference<List<DownloadedComment>>() {});
     }
 
 

@@ -1,5 +1,7 @@
 package com.gooddata.github_pull_request_viewer.actions;
 
+import com.gooddata.github_pull_request_viewer.model.Comment;
+import com.gooddata.github_pull_request_viewer.model.DownloadedComment;
 import com.gooddata.github_pull_request_viewer.model.PullRequest;
 import com.gooddata.github_pull_request_viewer.model.PullRequestSource;
 import com.gooddata.github_pull_request_viewer.services.CodeReviewService;
@@ -36,6 +38,7 @@ import org.wickedsource.diffparser.api.model.Diff;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static git4idea.actions.GitRepositoryAction.getGitRoots;
 
@@ -83,6 +86,8 @@ public class StartCodeReviewAction extends AnAction {
                 ServiceManager.getService(project, FileHighlightService.class);
         final CodeReviewService codeReviewService =
                 ServiceManager.getService(project, CodeReviewService.class);
+        final GitHubRestService gitHubRestService =
+                ServiceManager.getService(project, GitHubRestService.class);
 
         codeReviewService.setPullRequest(pullRequest);
 
@@ -99,6 +104,10 @@ public class StartCodeReviewAction extends AnAction {
                 indicator.setFraction(0.40);
                 indicator.setText("loading pull request diffs");
                 loadPullRequestDiffs(project, codeReviewService);
+
+                indicator.setFraction(0.75);
+                indicator.setText("loading pull request comments");
+                loadPullRequestComments(project, codeReviewService, gitHubRestService);
 
                 indicator.setText("highlighting the changes");
                 indicator.setFraction(0.90);
@@ -123,6 +132,7 @@ public class StartCodeReviewAction extends AnAction {
                 indicator.setText("done");
                 indicator.setFraction(1.00);
                 logger.info("action=start_code_review status=finished");
+
                 return null;
             });
         } catch(IllegalStateException ex) {
@@ -193,6 +203,15 @@ public class StartCodeReviewAction extends AnAction {
             return authDataHolder.getAuthData().getTokenAuth().getToken();
         } catch (final Exception ex1) {
             throw new IllegalStateException("failed to retrieve token");
+        }
+    }
+
+    private void loadPullRequestComments(final Project project, final CodeReviewService codeReviewService, final GitHubRestService gitHubRestService) {
+        try {
+            final List<DownloadedComment> comments = gitHubRestService.getComments(project);
+            codeReviewService.setComments(comments);
+        } catch (final IOException e) {
+            throw new IllegalStateException("failed to load comments for pull request");
         }
     }
 
