@@ -45,7 +45,7 @@ public class GitHubRestService {
         final HttpGet request = new HttpGet(format(GITHUB_API_PR_URL_FORMAT, pullRequest.getRepoOwner(),
                 pullRequest.getRepoName(), pullRequest.getPullRequestId()));
         request.addHeader("Accept", ACCEPT_V3_DIFF);
-        request.addHeader("Authorization", "token " + codeReviewService.getGithubToken());
+        request.addHeader("Authorization", codeReviewService.getGithubAuthorization());
         request.addHeader("User-Agent", USER_AGENT);
         final HttpResponse response = client.execute(request);
 
@@ -71,7 +71,7 @@ public class GitHubRestService {
         final HttpPost request = new HttpPost(format(GITHUB_API_COMMENT_URL_FORMAT, pullRequest.getRepoOwner(),
                 pullRequest.getRepoName(), pullRequest.getPullRequestId()));
 
-        request.addHeader("Authorization", "token " + codeReviewService.getGithubToken());
+        request.addHeader("Authorization", codeReviewService.getGithubAuthorization());
         request.addHeader("User-Agent", USER_AGENT);
         request.setEntity(new StringEntity(json));
         final HttpResponse response = client.execute(request);
@@ -94,7 +94,7 @@ public class GitHubRestService {
         final HttpGet request = new HttpGet(format(GITHUB_API_PR_URL_FORMAT, pullRequest.getRepoOwner(),
                 pullRequest.getRepoName(), pullRequest.getPullRequestId()));
         request.addHeader("Accept", ACCEPT_V3);
-        request.addHeader("Authorization", "token " + codeReviewService.getGithubToken());
+        request.addHeader("Authorization", codeReviewService.getGithubAuthorization());
         request.addHeader("User-Agent", USER_AGENT);
         final HttpResponse response = client.execute(request);
 
@@ -124,7 +124,7 @@ public class GitHubRestService {
         final HttpGet request = new HttpGet(format(GITHUB_API_COMMITS_URL_FORMAT, pullRequest.getRepoOwner(),
                 pullRequest.getRepoName(), pullRequest.getPullRequestId()));
         request.addHeader("Accept", ACCEPT_V3);
-        request.addHeader("Authorization", "token " + codeReviewService.getGithubToken());
+        request.addHeader("Authorization", codeReviewService.getGithubAuthorization());
         request.addHeader("User-Agent", USER_AGENT);
         final HttpResponse response = client.execute(request);
 

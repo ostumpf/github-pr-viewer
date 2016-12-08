@@ -1,13 +1,16 @@
 package com.gooddata.github_pull_request_viewer.services;
 
 import com.gooddata.github_pull_request_viewer.model.PullRequest;
+import com.intellij.openapi.components.ServiceManager;
+import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.project.Project;
 import org.wickedsource.diffparser.api.model.Diff;
 
 import java.util.List;
 
 public class CodeReviewService {
 
-    private String githubToken;
+    private String githubAuthorization;
     private PullRequest pullRequest;
     private List<Diff> diffs;
 
@@ -31,11 +34,23 @@ public class CodeReviewService {
         return diffs != null;
     }
 
-    public String getGithubToken() {
-        return githubToken;
+    public String getGithubAuthorization() {
+        return githubAuthorization;
     }
 
-    public void setGithubToken(final String githubToken) {
-        this.githubToken = githubToken;
+    public void setGithubAuthorization(final String githubAuthorization) {
+        this.githubAuthorization = githubAuthorization;
+    }
+
+    public void stopCodeReview(final Project project) {
+        final FileHighlightService fileHighlightService =
+                ServiceManager.getService(project,
+                        FileHighlightService.class);
+
+        final FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
+
+        setDiffs(null);
+        setPullRequest(null);
+        fileHighlightService.highlightFile(fileEditorManager);
     }
 }
