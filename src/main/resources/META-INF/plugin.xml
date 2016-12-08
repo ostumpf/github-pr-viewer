@@ -47,9 +47,18 @@
       <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
     </action>-->
 
-    <action id="StartGithubCodeReview" class="com.gooddata.github_pull_request_viewer.actions.StartCodeReviewAction" text="Start Code Review"/>
-    <action id="AddCodeReviewComment" class="com.gooddata.github_pull_request_viewer.actions.AddCodeReviewCommentAction" text="Add Comment"/>
-    <action id="StopGithubCodeReview" class="com.gooddata.github_pull_request_viewer.actions.StopCodeReviewAction" text="Stop Code Review"/>
+    <action id="StartGithubCodeReview" class="com.gooddata.github_pull_request_viewer.actions.StartCodeReviewAction" text="Start Code Review"
+            description="Prompts for GitHub Pull Request URL and highlights modified/added rows in the code editor">
+      <keyboard-shortcut first-keystroke="control shift c" second-keystroke="control shift s" keymap="$default"/>
+    </action>
+    <action id="AddCodeReviewComment" class="com.gooddata.github_pull_request_viewer.actions.AddCodeReviewCommentAction" text="Add Comment"
+            description="Posts a new comment on the currently selected row">
+      <keyboard-shortcut first-keystroke="control shift c" second-keystroke="control shift c" keymap="$default"/>
+    </action>
+    <action id="StopGithubCodeReview" class="com.gooddata.github_pull_request_viewer.actions.StopCodeReviewAction" text="Stop Code Review"
+            description="Hides rows highlighting">
+      <keyboard-shortcut first-keystroke="control shift c" second-keystroke="control shift q" keymap="$default"/>
+    </action>
 
     <group id="GithubCodeReviewEditorMenuGroup" text="GitHub Pull Request" popup="true">
       <reference ref="StartGithubCodeReview"/>
