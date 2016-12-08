@@ -18,6 +18,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.IconUtil;
 import org.jetbrains.annotations.NotNull;
 import org.wickedsource.diffparser.api.model.Diff;
+import org.wickedsource.diffparser.api.model.Hunk;
 import org.wickedsource.diffparser.api.model.Line;
 
 import javax.swing.*;
@@ -96,8 +97,36 @@ public class FileHighlightService {
                 });
     }
 
-    private int getFileLine(final int position, final String relativePath, final CodeReviewService codeReviewService) {
+    private int getFileLine(final int position, final String relativePath,
+                            final CodeReviewService codeReviewService,
+                            final FileEditorManager fileEditorManager) {
+        final Optional<Diff> diffOptional = getDiff(codeReviewService.getDiffs(), relativePath, fileEditorManager.getProject().getBasePath());
 
+        if (diffOptional.isPresent()) {
+            for (final Hunk hunk : diffOptional.get().getHunks()) {
+                int fileLine = hunk.getToFileRange().getLineStart() - 1; // -1 for 0/1 based counting
+                int diffLine = 1;
+
+                for (final Line line : hunk.getLines()) {
+                    if (line.getLineType().equals(Line.LineType.TO) || line.getLineType().equals(Line.LineType.NEUTRAL)) {
+                        fileLine++;
+                    }
+
+                    diffLine++;
+
+                    if (diffLine == position) {
+                        return fileLine;
+                    }
+                }
+            }
+
+            logger.info("action=get_file_line matching line not found");
+
+            return 1;
+        } else {
+            logger.warn("action=get_file_line no diff for file " + relativePath);
+            return 1;
+        }
     }
 
     private void addGutterIcon(RangeHighlighter rangeHighlighter, final String messageBody) {
@@ -185,8 +214,9 @@ public class FileHighlightService {
         return diffs.stream().filter(diff -> diff.getToFileName().endsWith(relativeFilePath)).findFirst();
     }
 
-    private List<DownloadedComment> getCommentsForFile(final List<DownloadedComment> allComments, final String absoluteFilePath,
-                                             final String projectBasePath) {
+    private List<DownloadedComment> getCommentsForFile(final List<DownloadedComment> allComments,
+                                                       final String absoluteFilePath,
+                                                       final String projectBasePath) {
         final String relativeFilePath = getRelativePath(absoluteFilePath, projectBasePath);
 
         return allComments.stream().filter(c -> relativeFilePath.endsWith(c.getPath())).collect(Collectors.toList());
