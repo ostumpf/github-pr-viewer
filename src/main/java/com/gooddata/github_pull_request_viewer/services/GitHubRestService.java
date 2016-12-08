@@ -1,5 +1,6 @@
 package com.gooddata.github_pull_request_viewer.services;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gooddata.github_pull_request_viewer.model.Comment;
@@ -8,6 +9,7 @@ import com.gooddata.github_pull_request_viewer.model.PullRequestSource;
 import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
+import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -17,7 +19,10 @@ import org.apache.http.impl.client.HttpClientBuilder;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringWriter;
+import java.nio.charset.Charset;
 import java.util.Iterator;
+import java.util.List;
 
 import static java.lang.String.format;
 
@@ -79,6 +84,30 @@ public class GitHubRestService {
         if (response.getStatusLine().getStatusCode() != 201) {
             throw new IllegalStateException("Cannot post the comment: " + response.getStatusLine().toString());
         }
+    }
+
+    public List<Comment> getComments(final Project project) throws IOException {
+        final CodeReviewService codeReviewService =
+                ServiceManager.getService(project, CodeReviewService.class);
+
+        final PullRequest pullRequest = codeReviewService.getPullRequest();
+
+        final HttpClient client = HttpClientBuilder.create().build();
+        final HttpGet request = new HttpGet(format(GITHUB_API_COMMENT_URL_FORMAT, pullRequest.getRepoOwner(),
+                pullRequest.getRepoName(), pullRequest.getPullRequestId()));
+        request.addHeader("Accept", ACCEPT_V3_DIFF);
+        request.addHeader("Authorization", "token " + codeReviewService.getGithubToken());
+        request.addHeader("User-Agent", USER_AGENT);
+
+        final HttpResponse response = client.execute(request);
+
+        if (response.getStatusLine().getStatusCode() != 200) {
+            throw new IllegalStateException("Cannot download comments for pull request from GitHub: " +
+                    response.getStatusLine().toString());
+        }
+
+        return parseComments(response.getEntity().getContent());
+
     }
 
     public PullRequestSource getPullRequestSource(final Project project) throws IOException {
@@ -153,6 +182,14 @@ public class GitHubRestService {
         }
 
         return lastNode.path("sha").textValue();
+    }
+
+    private List<Comment> parseComments(final InputStream inputStream) throws IOException {
+        final ObjectMapper objectMapper = new ObjectMapper();
+        final StringWriter stringWriter = new StringWriter();
+
+        IOUtils.copy(inputStream, stringWriter, Charset.defaultCharset());
+        return objectMapper.readValue(stringWriter.toString(), new TypeReference<List<Comment>>() {});
     }
 
 
