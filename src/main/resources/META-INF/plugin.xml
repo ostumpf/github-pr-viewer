@@ -9,11 +9,19 @@
       GitHub and highlights the modified lines in the code editor. To start code review:
       <ol>
         <li>Open the project</li>
-        <li>Go to Project context menu -> GitHub Pull Request -> Start Code Review</li>
+        <li>Go to Project or Code Editor context menu -> GitHub Pull Request -> Start Code Review</li>
+      </ol>
+      To post a comment:
+      <ol>
+        <li>Go to Code Editor context menu -> GitHub Pull Request -> Add Comment</li>
+      </ol>
+      To re-open all files modified in the Pull Request:
+      <ol>
+        <li>Go to Project or Code Editor context menu -> GitHub Pull Request -> Open Files</li>
       </ol>
       To stop code review:
       <ol>
-        <li>Go to Project context menu -> GitHub Pull Request -> Stop Code Review</li>
+        <li>Go to Project or Code Editor context menu -> GitHub Pull Request -> Stop Code Review</li>
       </ol>
     ]]></description>
 
@@ -49,6 +57,10 @@
             description="Posts a new comment on the currently selected row">
       <keyboard-shortcut first-keystroke="control shift c" second-keystroke="control shift c" keymap="$default"/>
     </action>
+    <action id="OpenCodeReviewFiles" class="com.gooddata.github_pull_request_viewer.actions.OpenCodeReviewFilesAction" text="Open Files"
+            description="Open all files modified in the pull request">
+      <keyboard-shortcut first-keystroke="control shift c" second-keystroke="control shift o" keymap="$default"/>
+    </action>
     <action id="StopGithubCodeReview" class="com.gooddata.github_pull_request_viewer.actions.StopCodeReviewAction" text="Stop Code Review"
             description="Hides rows highlighting">
       <keyboard-shortcut first-keystroke="control shift c" second-keystroke="control shift q" keymap="$default"/>
@@ -56,6 +68,8 @@
 
     <group id="GithubCodeReviewEditorMenuGroup" text="GitHub Pull Request" popup="true">
       <reference ref="StartGithubCodeReview"/>
+      <separator/>
+      <reference ref="OpenCodeReviewFiles"/>
       <separator/>
       <reference ref="AddCodeReviewComment"/>
       <separator/>
@@ -66,6 +80,8 @@
 
     <group id="GithubCodeReviewProjectViewMenuGroup" text="GitHub Pull Request" popup="true">
       <reference ref="StartGithubCodeReview"/>
+      <separator/>
+      <reference ref="OpenCodeReviewFiles"/>
       <separator/>
       <reference ref="StopGithubCodeReview"/>
 
