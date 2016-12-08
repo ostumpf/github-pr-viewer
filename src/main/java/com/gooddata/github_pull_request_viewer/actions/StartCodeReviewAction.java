@@ -75,6 +75,11 @@ public class StartCodeReviewAction extends AnAction {
         }
 
         final String pullRequestUrl = Gui.getGitHubPullRequestUrl(e.getProject());
+        if (pullRequestUrl == null) {
+            logger.warn("action=start_code_review User cancelled");
+            return;
+        }
+
         final PullRequest pullRequest = RegexUtils.getPullRequest(pullRequestUrl);
 
         logger.info("action=start_code_review status=start");

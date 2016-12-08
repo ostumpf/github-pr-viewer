@@ -63,6 +63,10 @@ public class AddCodeReviewCommentAction extends AnAction {
         final HighlightedRow highlightedRow = fileHighlightService.getHighlightedRowsMap().get(selectedFile).get(selectedLine);
 
         final String comment = Gui.getCommentText(e.getProject());
+        if (comment == null) {
+            logger.info("action=add_comment status=finished User cancelled");
+            return;
+        }
 
         try {
             final String commit = gitHubRestService.getLastCommit(e.getProject());
