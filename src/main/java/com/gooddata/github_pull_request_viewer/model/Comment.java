@@ -12,13 +12,13 @@ public class Comment {
     private final String body;
     private final String commit;
     private final String path;
-    private final int position;
+    private final Integer position;
 
     @JsonCreator
     public Comment(@JsonProperty("body") final String body,
                    @JsonProperty("commit_id") final String commit,
                    @JsonProperty("path") final String path,
-                   @JsonProperty("position") final int position) {
+                   @JsonProperty("position") final Integer position) {
         this.body = body;
         this.commit = commit;
         this.path = path;
@@ -38,7 +38,7 @@ public class Comment {
         return path;
     }
 
-    public int getPosition() {
+    public Integer getPosition() {
         return position;
     }
 }

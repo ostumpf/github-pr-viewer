@@ -9,17 +9,24 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public class DownloadedComment extends Comment {
     private final int lineNumber;
+    private final User user;
 
     @JsonCreator
-    public DownloadedComment(@JsonProperty("body") String body,
-                             @JsonProperty("commit_id") String commit,
-                             @JsonProperty("path") String path, @JsonProperty("position") int position,
-                             @JsonProperty("original_position") int lineNumber) {
+    public DownloadedComment(@JsonProperty("body") final String body,
+                             @JsonProperty("commit_id") final String commit,
+                             @JsonProperty("path") final String path, @JsonProperty("position") final int position,
+                             @JsonProperty("user") final User user,
+                             @JsonProperty("original_position") final int lineNumber) {
         super(body, commit, path, position);
         this.lineNumber = lineNumber;
+        this.user = user;
     }
 
     public int getLineNumber() {
         return lineNumber;
+    }
+
+    public User getUser() {
+        return user;
     }
 }

@@ -77,21 +77,25 @@ public class FileHighlightService {
         }
     }
 
-    public void highlightComments(@NotNull final Editor textEditor, final List<DownloadedComment> comments, final CodeReviewService codeReviewService) {
+    public void highlightComments(@NotNull final Editor textEditor, final List<DownloadedComment> comments,
+                                  final CodeReviewService codeReviewService) {
         MarkupModel markupModel = textEditor.getMarkupModel();
 
 
         comments.stream()
                 .collect(Collectors.groupingBy(DownloadedComment::getLineNumber,
                         Collectors.reducing(
-                                (DownloadedComment c1, DownloadedComment c2) -> new DownloadedComment(c1.getBody() + "\n\n" + c2.getBody(),
+                                (DownloadedComment c1, DownloadedComment c2) -> new DownloadedComment(
+                                        c1.getBody() + "\n\n" + c2.getBody(),
                                         c1.getCommit(), c1.getPath(), c1.getPosition(), c1.getLineNumber()))))
                 .values()
                 .stream()
                 .map(Optional::get)
+                .filter(c -> c.getPosition() != null)
                 .forEach(c -> {
+                    int fileLine = getFileLine(c.getPosition(), c.getPath(), codeReviewService);
                     RangeHighlighter highlighter =
-                            markupModel.addLineHighlighter(c.getLineNumber(), HighlighterLayer.FIRST, null);
+                            markupModel.addLineHighlighter(fileLine, HighlighterLayer.FIRST, null);
                     addGutterIcon(highlighter, c.getBody());
                 });
     }
@@ -140,7 +144,8 @@ public class FileHighlightService {
         codeReviewService.getHighlightedRowsMap().clear();
     }
 
-    private void highlightDiff(final Editor textEditor, final CodeReviewService codeReviewService, final VirtualFile virtualFile, final Diff diff) {
+    private void highlightDiff(final Editor textEditor, final CodeReviewService codeReviewService,
+                               final VirtualFile virtualFile, final Diff diff) {
         final String relativePath = codeReviewService.getRelativePath(diff);
 
         diff.getHunks().forEach(hunk -> {
@@ -185,8 +190,9 @@ public class FileHighlightService {
         return diffs.stream().filter(diff -> diff.getToFileName().endsWith(relativeFilePath)).findFirst();
     }
 
-    private List<DownloadedComment> getCommentsForFile(final List<DownloadedComment> allComments, final String absoluteFilePath,
-                                             final String projectBasePath) {
+    private List<DownloadedComment> getCommentsForFile(final List<DownloadedComment> allComments,
+                                                       final String absoluteFilePath,
+                                                       final String projectBasePath) {
         final String relativeFilePath = getRelativePath(absoluteFilePath, projectBasePath);
 
         return allComments.stream().filter(c -> relativeFilePath.endsWith(c.getPath())).collect(Collectors.toList());
