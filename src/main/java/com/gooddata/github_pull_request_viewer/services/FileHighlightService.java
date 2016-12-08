@@ -73,31 +73,31 @@ public class FileHighlightService {
             }
 
             if (!fileComments.isEmpty()) {
-                highlightComments(textEditor, fileComments, codeReviewService);
+                highlightComments(textEditor, fileComments, codeReviewService, fileEditorManager);
             }
         }
     }
 
     public void highlightComments(@NotNull final Editor textEditor, final List<DownloadedComment> comments,
-                                  final CodeReviewService codeReviewService) {
+                                  final CodeReviewService codeReviewService, final FileEditorManager fileEditorManager) {
         MarkupModel markupModel = textEditor.getMarkupModel();
 
 
         comments.stream()
-                .collect(Collectors.groupingBy(DownloadedComment::getLineNumber,
+                .filter(c -> c.getPosition() != null)
+                .collect(Collectors.groupingBy(DownloadedComment::getPosition,
                         Collectors.reducing(
                                 (DownloadedComment c1, DownloadedComment c2) -> new DownloadedComment(
                                         c1.getBody() + "\n\n" + c2.getBody(),
-                                        c1.getCommit(), c1.getPath(), c1.getPosition(), c1.getLineNumber()))))
+                                        c1.getCommit(), c1.getPath(), c1.getPosition(), c1.getUser()))))
                 .values()
                 .stream()
                 .map(Optional::get)
-                .filter(c -> c.getPosition() != null)
                 .forEach(c -> {
-                    int fileLine = getFileLine(c.getPosition(), c.getPath(), codeReviewService);
+                    int fileLine = getFileLine(c.getPosition(), c.getPath(), codeReviewService, fileEditorManager);
                     RangeHighlighter highlighter =
                             markupModel.addLineHighlighter(fileLine, HighlighterLayer.FIRST, null);
-                    addGutterIcon(highlighter, c.getBody());
+                    addGutterIcon(highlighter, "[" + c.getUser().getUsername()  +"]: " + c.getBody());
                 });
     }
 

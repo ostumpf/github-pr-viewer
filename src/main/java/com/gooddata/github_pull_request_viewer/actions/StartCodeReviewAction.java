@@ -87,6 +87,8 @@ public class StartCodeReviewAction extends AnAction {
         codeReviewService.setPullRequest(pullRequest);
 
         final GitRepository repository = GithubUtil.getGitRepository(project, null);
+        final VirtualFile defaultRoot = GitBranchUtil.getCurrentRepository(project).getRoot();
+
 
         GithubUtil.computeValueInModal(project, "Access to GitHub", indicator -> {
             try {
@@ -105,7 +107,7 @@ public class StartCodeReviewAction extends AnAction {
 
                 indicator.setText("fetching the remote");
                 indicator.setFraction(0.02);
-                fetchRemote(project, pullRequestSource.getRemoteUserName(), pullRequestSource.getRemoteBranch());
+                fetchRemote(project, pullRequestSource.getRemoteUserName(), pullRequestSource.getRemoteBranch(), defaultRoot);
 
                 indicator.setText("checking out the branch");
                 indicator.setFraction(0.3);
@@ -125,7 +127,6 @@ public class StartCodeReviewAction extends AnAction {
 
                 indicator.setText("done");
                 indicator.setFraction(1.00);
-                logger.info("action=start_code_review status=finished");
 
             } catch (final Exception ex) {
                 GithubNotifications.showError(project, "error", ex.getMessage());
@@ -150,14 +151,13 @@ public class StartCodeReviewAction extends AnAction {
                 true, Collections.singletonList(repository), null);
     }
 
-    private void fetchRemote(final Project project, final String remoteName, final String branchName) {
+    private void fetchRemote(final Project project, final String remoteName, final String branchName, final VirtualFile defaultRoot) {
         ApplicationManager.getApplication().invokeLater(BasicAction::saveAll);
 
         final GitVcs vcs = GitVcs.getInstance(project);
         final List<VirtualFile> gitRoots = getGitRoots(project, vcs);
         if (gitRoots == null) throw new IllegalStateException("cannot determine git root folder");
 
-        final VirtualFile defaultRoot = GitBranchUtil.getCurrentRepository(project).getRoot();
         new GitFetcher(project, new EmptyProgressIndicator(), true)
                 .fetch(defaultRoot, remoteName, branchName);
     }
