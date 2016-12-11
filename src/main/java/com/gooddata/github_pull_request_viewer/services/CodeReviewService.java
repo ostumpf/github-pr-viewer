@@ -1,6 +1,5 @@
 package com.gooddata.github_pull_request_viewer.services;
 
-import com.gooddata.github_pull_request_viewer.model.Comment;
 import com.gooddata.github_pull_request_viewer.model.DownloadedComment;
 import com.gooddata.github_pull_request_viewer.model.HighlightedRow;
 import com.gooddata.github_pull_request_viewer.model.PullRequest;

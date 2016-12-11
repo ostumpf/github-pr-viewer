@@ -1,9 +1,7 @@
 package com.gooddata.github_pull_request_viewer.services;
 
-import com.gooddata.github_pull_request_viewer.model.Comment;
 import com.gooddata.github_pull_request_viewer.model.DownloadedComment;
 import com.gooddata.github_pull_request_viewer.model.HighlightedRow;
-import com.gooddata.github_pull_request_viewer.utils.RegexUtils;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.diagnostic.Logger;
@@ -24,13 +22,17 @@ import org.wickedsource.diffparser.api.model.Line;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class FileHighlightService {
+import static java.util.Arrays.asList;
 
+public class FileHighlightService {
+    private static final DateFormat commentDateFormat = new SimpleDateFormat("d MMM yyyy HH:mm:ss");
     private static final Logger logger = Logger.getInstance(FileHighlightService.class);
     private static final Color GREEN = new Color(234, 255, 234);
     private final TextAttributes backgroundTextAttributes = new TextAttributes();
@@ -73,32 +75,58 @@ public class FileHighlightService {
             }
 
             if (!fileComments.isEmpty()) {
-                highlightComments(textEditor, fileComments, codeReviewService, fileEditorManager);
+                highlightComments(textEditor, fileComments, codeReviewService);
             }
         }
     }
 
     public void highlightComments(@NotNull final Editor textEditor, final List<DownloadedComment> comments,
-                                  final CodeReviewService codeReviewService, final FileEditorManager fileEditorManager) {
-        MarkupModel markupModel = textEditor.getMarkupModel();
-
-
+                                  final CodeReviewService codeReviewService) {
         comments.stream()
                 .filter(c -> c.getPosition() != null)
-                .collect(Collectors.groupingBy(DownloadedComment::getPosition,
-                        Collectors.reducing(
-                                (DownloadedComment c1, DownloadedComment c2) -> new DownloadedComment(
-                                        c1.getBody() + "\n\n" + c2.getBody(),
-                                        c1.getCommit(), c1.getPath(), c1.getPosition(), c1.getUser()))))
-                .values()
+                .sorted()
+                .collect(Collectors.groupingBy(DownloadedComment::getPosition))
+                .forEach((Integer position, List<DownloadedComment> commentList) -> {
+                            showGutterIconOnLine(commentList,
+                                    getFileLine(position, commentList.get(0).getPath(), codeReviewService),
+                                    textEditor);
+                        }
+                );
+    }
+
+
+    private void showGutterIconOnLine(final List<DownloadedComment> commentList, final int line,
+                                      final Editor textEditor) {
+        final MarkupModel markupModel = textEditor.getMarkupModel();
+        commentList
                 .stream()
-                .map(Optional::get)
-                .forEach(c -> {
-                    int fileLine = getFileLine(c.getPosition(), c.getPath(), codeReviewService);
-                    RangeHighlighter highlighter =
-                            markupModel.addLineHighlighter(fileLine, HighlighterLayer.FIRST, null);
-                    addGutterIcon(highlighter, "[" + c.getUser().getUsername()  +"]: " + c.getBody());
+                .map(c -> formatCommentMessage(c))
+                .reduce((msg1, msg2) -> msg1 + "\n\n" + msg2)
+                .ifPresent(text -> {
+                    final GutterIconRenderer gutterIconRenderer = getGutterIconRenderer(text);
+
+                    if (!commentGutterIconExists(markupModel, gutterIconRenderer)) {
+                        RangeHighlighter highlighter =
+                                markupModel.addLineHighlighter(line, HighlighterLayer.FIRST, null);
+                        highlighter.setGutterIconRenderer(gutterIconRenderer);
+                    }
                 });
+    }
+
+    private boolean commentGutterIconExists(final MarkupModel markupModel, final GutterIconRenderer iconRenderer) {
+        final RangeHighlighter[] allHighLighters = markupModel.getAllHighlighters();
+
+        return asList(allHighLighters).stream()
+                .anyMatch(highlighter -> iconRenderer.equals(highlighter.getGutterIconRenderer()));
+    }
+
+    private String formatCommentMessage(final DownloadedComment c1) {
+        return new StringBuilder().append("[")
+                .append(commentDateFormat.format(c1.getUpdatedAt()))
+                .append(" ").append(c1.getUser().getUsername())
+                .append("]: ")
+                .append(c1.getBody())
+                .toString();
     }
 
     private int getFileLine(final int position, final String relativePath,
@@ -111,7 +139,8 @@ public class FileHighlightService {
                 int fileLine = hunk.getToFileRange().getLineStart() - 1; // -1 for 0/1 based counting
 
                 for (final Line line : hunk.getLines()) {
-                    if (line.getLineType().equals(Line.LineType.TO) || line.getLineType().equals(Line.LineType.NEUTRAL)) {
+                    if (line.getLineType().equals(Line.LineType.TO) ||
+                            line.getLineType().equals(Line.LineType.NEUTRAL)) {
                         fileLine++;
                     }
 
@@ -132,14 +161,16 @@ public class FileHighlightService {
         }
     }
 
-    private void addGutterIcon(RangeHighlighter rangeHighlighter, final String messageBody) {
-        rangeHighlighter.setGutterIconRenderer(new GutterIconRenderer() {
+    private GutterIconRenderer getGutterIconRenderer(final String messageBody) {
+        return new GutterIconRenderer() {
+            private final String tooltipText = messageBody;
+
             public Icon getIcon() {
                 return IconUtil.getAddIcon();
             }
 
             public String getTooltipText() {
-                return messageBody;
+                return tooltipText;
             }
 
             public boolean isNavigateAction() {
@@ -148,18 +179,37 @@ public class FileHighlightService {
 
             @Override
             public boolean equals(Object obj) {
-                return false;
+                if (obj == this) {
+                    return true;
+                }
+                if (obj == null || obj.getClass() != this.getClass()) {
+                    return false;
+                }
+
+                GutterIconRenderer renderer2 = (GutterIconRenderer) obj;
+                if (tooltipText.equals(renderer2.getTooltipText())) {
+                    return true;
+                } else {
+                    return false;
+                }
             }
 
             @Override
             public int hashCode() {
-                return 0;
+                return this.tooltipText.hashCode();
             }
 
             public AnAction getClickAction() {
                 return null;
             }
-        });
+        };
+    }
+
+    private void addGutterIcon(RangeHighlighter rangeHighlighter, final String messageBody) {
+        final GutterIconRenderer gutterIconRenderer = getGutterIconRenderer(messageBody);
+        if (!gutterIconRenderer.equals(rangeHighlighter.getGutterIconRenderer())) {
+            rangeHighlighter.setGutterIconRenderer(gutterIconRenderer);
+        }
     }
 
     private void clearHiglights(final Editor textEditor, final CodeReviewService codeReviewService) {

@@ -1,6 +1,5 @@
 package com.gooddata.github_pull_request_viewer.actions;
 
-import com.gooddata.github_pull_request_viewer.model.Comment;
 import com.gooddata.github_pull_request_viewer.model.DownloadedComment;
 import com.gooddata.github_pull_request_viewer.model.PullRequest;
 import com.gooddata.github_pull_request_viewer.model.PullRequestSource;
@@ -38,7 +37,6 @@ import org.wickedsource.diffparser.api.model.Diff;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static git4idea.actions.GitRepositoryAction.getGitRoots;
 

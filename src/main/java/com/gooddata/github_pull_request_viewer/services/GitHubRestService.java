@@ -22,8 +22,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
 import java.nio.charset.Charset;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.Iterator;
 import java.util.List;
+import java.util.TimeZone;
 
 import static java.lang.String.format;
 
@@ -188,6 +192,9 @@ public class GitHubRestService {
     private List<DownloadedComment> parseComments(final InputStream inputStream) throws IOException {
         final ObjectMapper objectMapper = new ObjectMapper();
         final StringWriter stringWriter = new StringWriter();
+        final DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+        objectMapper.setTimeZone(TimeZone.getDefault());
+        objectMapper.setDateFormat(df);
 
         IOUtils.copy(inputStream, stringWriter, Charset.defaultCharset());
         return objectMapper.readValue(stringWriter.toString(), new TypeReference<List<DownloadedComment>>() {});
