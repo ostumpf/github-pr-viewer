@@ -1,5 +1,8 @@
 package com.gooddata.github_pull_request_viewer.services;
 
+import com.gooddata.github_pull_request_viewer.diff_parser.Diff;
+import com.gooddata.github_pull_request_viewer.diff_parser.Hunk;
+import com.gooddata.github_pull_request_viewer.diff_parser.Line;
 import com.gooddata.github_pull_request_viewer.model.DownloadedComment;
 import com.gooddata.github_pull_request_viewer.model.HighlightedRow;
 import com.intellij.openapi.actionSystem.AnAction;
@@ -15,9 +18,6 @@ import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.IconUtil;
 import org.jetbrains.annotations.NotNull;
-import org.wickedsource.diffparser.api.model.Diff;
-import org.wickedsource.diffparser.api.model.Hunk;
-import org.wickedsource.diffparser.api.model.Line;
 
 import javax.swing.*;
 import java.awt.*;
@@ -136,11 +136,11 @@ public class FileHighlightService {
 
         if (diffOptional.isPresent()) {
             for (final Hunk hunk : diffOptional.get().getHunks()) {
-                int fileLine = hunk.getToFileRange().getLineStart() - 1; // -1 for 0/1 based counting
+                int fileLine = hunk.getTargetStart() - 1; // -1 for 0/1 based counting
 
                 for (final Line line : hunk.getLines()) {
-                    if (line.getLineType().equals(Line.LineType.TO) ||
-                            line.getLineType().equals(Line.LineType.NEUTRAL)) {
+                    if (line.getType().equals(Line.Type.ADDED) ||
+                            line.getType().equals(Line.Type.NEUTRAL)) {
                         fileLine++;
                     }
 
@@ -221,18 +221,17 @@ public class FileHighlightService {
 
     private void highlightDiff(final Editor textEditor, final CodeReviewService codeReviewService,
                                final VirtualFile virtualFile, final Diff diff) {
-        final String relativePath = codeReviewService.getRelativePath(diff);
         int diffLine = 1;
 
         for (final Hunk hunk : diff.getHunks()) {
-            int fileLine = hunk.getToFileRange().getLineStart() - 1; // -1 for 0/1 based counting
+            int fileLine = hunk.getTargetStart() - 1; // -1 for 0/1 based counting
 
             for (final Line line : hunk.getLines()) {
-                if (line.getLineType().equals(Line.LineType.TO)) {
-                    highlightRow(textEditor, codeReviewService, virtualFile, relativePath, fileLine, diffLine);
+                if (line.getType().equals(Line.Type.ADDED)) {
+                    highlightRow(textEditor, codeReviewService, virtualFile, diff.getRelativePath(), fileLine, diffLine);
                 }
 
-                if (line.getLineType().equals(Line.LineType.TO) || line.getLineType().equals(Line.LineType.NEUTRAL)) {
+                if (line.getType().equals(Line.Type.ADDED) || line.getType().equals(Line.Type.NEUTRAL)) {
                     fileLine++;
                 }
 
@@ -266,7 +265,7 @@ public class FileHighlightService {
 
     private Optional<Diff> getDiff(final List<Diff> diffs, final String relativeFilePath) {
         // TODO differentiate between project base path and git root
-        return diffs.stream().filter(diff -> diff.getToFileName().endsWith(relativeFilePath)).findFirst();
+        return diffs.stream().filter(diff -> diff.getRelativePath().equals(relativeFilePath)).findFirst();
     }
 
     private List<DownloadedComment> getCommentsForFile(final List<DownloadedComment> allComments,

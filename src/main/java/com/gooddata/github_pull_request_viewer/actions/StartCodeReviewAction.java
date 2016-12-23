@@ -1,9 +1,11 @@
 package com.gooddata.github_pull_request_viewer.actions;
 
+import com.gooddata.github_pull_request_viewer.diff_parser.Diff;
 import com.gooddata.github_pull_request_viewer.model.DownloadedComment;
 import com.gooddata.github_pull_request_viewer.model.PullRequest;
 import com.gooddata.github_pull_request_viewer.model.PullRequestSource;
 import com.gooddata.github_pull_request_viewer.services.CodeReviewService;
+import com.gooddata.github_pull_request_viewer.services.DiffParserService;
 import com.gooddata.github_pull_request_viewer.services.FileHighlightService;
 import com.gooddata.github_pull_request_viewer.services.GitHubRestService;
 import com.gooddata.github_pull_request_viewer.utils.Gui;
@@ -31,8 +33,6 @@ import org.jetbrains.plugins.github.util.GithubAuthData;
 import org.jetbrains.plugins.github.util.GithubAuthDataHolder;
 import org.jetbrains.plugins.github.util.GithubNotifications;
 import org.jetbrains.plugins.github.util.GithubUtil;
-import org.wickedsource.diffparser.api.UnifiedDiffParser;
-import org.wickedsource.diffparser.api.model.Diff;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -43,6 +43,12 @@ import static git4idea.actions.GitRepositoryAction.getGitRoots;
 public class StartCodeReviewAction extends AnAction {
 
     private static final Logger logger = Logger.getInstance(StartCodeReviewAction.class);
+    private final DiffParserService diffParserService;
+
+
+    public StartCodeReviewAction() {
+        diffParserService = ServiceManager.getService(DiffParserService.class);
+    }
 
     @Override
     public void update(AnActionEvent e) {
@@ -205,6 +211,6 @@ public class StartCodeReviewAction extends AnAction {
     private List<Diff> getPullRequestDiffs(final Project project) throws IOException {
         final GitHubRestService gitHubRestService = ServiceManager.getService(project, GitHubRestService.class);
 
-        return new UnifiedDiffParser().parse(gitHubRestService.getPullRequestDiff(project));
+        return diffParserService.parse(gitHubRestService.getPullRequestDiff(project));
     }
 }

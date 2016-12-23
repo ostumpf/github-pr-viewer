@@ -1,5 +1,6 @@
 package com.gooddata.github_pull_request_viewer.services;
 
+import com.gooddata.github_pull_request_viewer.diff_parser.Diff;
 import com.gooddata.github_pull_request_viewer.model.DownloadedComment;
 import com.gooddata.github_pull_request_viewer.model.HighlightedRow;
 import com.gooddata.github_pull_request_viewer.model.PullRequest;
@@ -9,7 +10,6 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
-import org.wickedsource.diffparser.api.model.Diff;
 
 import java.util.HashMap;
 import java.util.List;
@@ -75,15 +75,5 @@ public class CodeReviewService {
         setDiffs(null);
         setPullRequest(null);
         fileHighlightService.highlightFile(fileEditorManager);
-    }
-
-    public String getRelativePath(final Diff diff) {
-        final List<String> headers = diff.getHeaderLines();
-        if (headers.size() < 1) {
-            logger.warn("action=get_target_commit cannot determine target commit for diff");
-            return null;
-        }
-
-        return RegexUtils.getRelativeFilePath(headers.get(0));
     }
 }

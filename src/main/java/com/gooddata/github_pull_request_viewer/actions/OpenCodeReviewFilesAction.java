@@ -11,7 +11,6 @@ import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import git4idea.actions.BasicAction;
 import git4idea.branch.GitBranchUtil;
-import org.wickedsource.diffparser.api.model.Diff;
 
 import java.io.File;
 
@@ -50,10 +49,9 @@ public class OpenCodeReviewFilesAction extends AnAction {
         final LocalFileSystem localFileSystem = LocalFileSystem.getInstance();
 
         codeReviewService.getDiffs().forEach(diff -> {
-            final String relativePath = codeReviewService.getRelativePath(diff);
             final VirtualFile projectRoot = GitBranchUtil.getCurrentRepository(e.getProject()).getRoot();
 
-            final VirtualFile virtualFile = localFileSystem.findFileByIoFile(new File(projectRoot.getPath(), relativePath));
+            final VirtualFile virtualFile = localFileSystem.findFileByIoFile(new File(projectRoot.getPath(), diff.getRelativePath()));
             fileEditorManager.openFile(virtualFile, false, true);
         });
 

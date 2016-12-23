@@ -46,6 +46,8 @@
                     serviceImplementation="com.gooddata.github_pull_request_viewer.services.GitHubRestService"/>
     <projectService serviceInterface="com.gooddata.github_pull_request_viewer.services.CodeReviewService"
                     serviceImplementation="com.gooddata.github_pull_request_viewer.services.CodeReviewService"/>
+    <applicationService serviceInterface="com.gooddata.github_pull_request_viewer.services.DiffParserService"
+                        serviceImplementation="com.gooddata.github_pull_request_viewer.services.DiffParserService"/>
   </extensions>
 
   <actions>
