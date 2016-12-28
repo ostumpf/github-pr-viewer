@@ -26,7 +26,7 @@ public class DiffListener extends GitHubDiffBaseListener {
     }
 
     @Override
-    public void exitMissing_newline_line(GitHubDiffParser.Missing_newline_lineContext ctx) {
+    public void exitMissing_newline_line(final GitHubDiffParser.Missing_newline_lineContext ctx) {
         super.exitMissing_newline_line(ctx);
 
         final Diff.Builder currentBuilder = diffBuilders.get(diffBuilders.size() - 1);

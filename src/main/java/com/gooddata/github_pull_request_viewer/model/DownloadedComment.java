@@ -6,11 +6,16 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.jetbrains.annotations.NotNull;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public class DownloadedComment extends Comment implements Comparable<DownloadedComment> {
+
+    private static final DateFormat commentDateFormat = new SimpleDateFormat("d MMM yyyy HH:mm:ss");
+
     private final User user;
     private final Date updatedAt;
 
@@ -31,6 +36,10 @@ public class DownloadedComment extends Comment implements Comparable<DownloadedC
 
     public Date getUpdatedAt() {
         return updatedAt;
+    }
+
+    public String getDisplayText() {
+        return String.format("[%s %s]: %s", commentDateFormat.format(getUpdatedAt()), getUser().getUsername(), getBody());
     }
 
     @Override

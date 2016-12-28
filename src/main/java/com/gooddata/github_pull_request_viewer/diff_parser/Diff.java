@@ -77,6 +77,27 @@ public class Diff {
                 '}';
     }
 
+    public int getFileLine(final int diffLine) {
+        int currentDiffLine = 1;
+        for (final Hunk hunk : hunks) {
+            int fileLine = hunk.getTargetStart() - 1; // -1 for 0/1 based counting
+
+            for (final Line line : hunk.getLines()) {
+                if (line.getType().equals(Line.Type.ADDED) || line.getType().equals(Line.Type.NEUTRAL)) {
+                    fileLine++;
+                }
+
+                currentDiffLine++;
+
+                if (diffLine == currentDiffLine) {
+                    return fileLine;
+                }
+            }
+        }
+
+        return 1;
+    }
+
     public enum Type {
         NEW, DELETED, MODIFIED
     }

@@ -1,5 +1,6 @@
 package com.gooddata.github_pull_request_viewer;
 
+import com.gooddata.github_pull_request_viewer.services.FileCommentsService;
 import com.gooddata.github_pull_request_viewer.services.FileHighlightService;
 import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.diagnostic.Logger;
@@ -46,6 +47,11 @@ public class PluginStartupActivity implements StartupActivity {
                     ServiceManager.getService(fileEditorManagerEvent.getManager().getProject(),
                             FileHighlightService.class);
 
+            final FileCommentsService fileCommentsService =
+                    ServiceManager.getService(fileEditorManagerEvent.getManager().getProject(),
+                            FileCommentsService.class);
+
+            fileCommentsService.showComments(fileEditorManagerEvent.getManager());
             fileHighlightService.highlightFile(fileEditorManagerEvent.getManager());
         }
     }

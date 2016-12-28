@@ -51,7 +51,7 @@ public class StartCodeReviewAction extends AnAction {
     }
 
     @Override
-    public void update(AnActionEvent e) {
+    public void update(final AnActionEvent e) {
         if (e.getProject() == null) {
             e.getPresentation().setEnabled(false);
             return;

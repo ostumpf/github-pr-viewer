@@ -4,20 +4,20 @@ import com.gooddata.github_pull_request_viewer.diff_parser.Diff;
 import com.gooddata.github_pull_request_viewer.model.DownloadedComment;
 import com.gooddata.github_pull_request_viewer.model.HighlightedRow;
 import com.gooddata.github_pull_request_viewer.model.PullRequest;
-import com.gooddata.github_pull_request_viewer.utils.RegexUtils;
 import com.intellij.openapi.components.ServiceManager;
-import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import git4idea.branch.GitBranchUtil;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class CodeReviewService {
-
-    private static final Logger logger = Logger.getInstance(CodeReviewService.class);
 
     private String githubAuthorization;
     private PullRequest pullRequest;
@@ -65,6 +65,22 @@ public class CodeReviewService {
         return highlightedRowsMap;
     }
 
+    public Optional<Diff> getDiff(final Project project, final VirtualFile virtualFile) {
+        final String relativeFilePath = getRelativePath(project, virtualFile);
+
+        return getDiff(relativeFilePath);
+    }
+
+    public Optional<Diff> getDiff(final String relativeFilePath) {
+        return diffs.stream().filter(diff -> diff.getRelativePath().equals(relativeFilePath)).findFirst();
+    }
+
+    public List<DownloadedComment> getCommentsForFile(final Project project, final VirtualFile virtualFile) {
+        final String relativeFilePath = getRelativePath(project, virtualFile);
+
+        return comments.stream().filter(c -> c.getPath().equals(relativeFilePath)).collect(Collectors.toList());
+    }
+
     public void stopCodeReview(final Project project) {
         final FileHighlightService fileHighlightService =
                 ServiceManager.getService(project,
@@ -75,5 +91,13 @@ public class CodeReviewService {
         setDiffs(null);
         setPullRequest(null);
         fileHighlightService.highlightFile(fileEditorManager);
+    }
+
+    private String getRelativePath(final Project project, final VirtualFile virtualFile) {
+        final VirtualFile defaultRoot = GitBranchUtil.getCurrentRepository(project).getRoot();
+        return new File(defaultRoot.getPath())
+                .toURI()
+                .relativize(new File(virtualFile.getPath()).toURI())
+                .toString();
     }
 }
