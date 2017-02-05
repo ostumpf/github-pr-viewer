@@ -58,7 +58,11 @@ public class AddCodeReviewCommentAction extends AnAction {
         final GitHubRestService gitHubRestService =
                 ServiceManager.getService(e.getProject(), GitHubRestService.class);
 
-        final int selectedLine = getSelectedLine(e.getProject());
+        final Integer selectedLine = getSelectedLine(e.getProject());
+        if (selectedLine == null) {
+            return;
+        }
+
         final VirtualFile selectedFile = getSelectedFile(e.getProject());
         final HighlightedRow highlightedRow = codeReviewService.getHighlightedRowsMap().get(selectedFile).get(selectedLine);
 
@@ -98,10 +102,16 @@ public class AddCodeReviewCommentAction extends AnAction {
         return selectedFiles[0];
     }
 
-    private int getSelectedLine(final Project project) {
+    private Integer getSelectedLine(final Project project) {
         final FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
         final Editor editor = fileEditorManager.getSelectedTextEditor();
-        final SelectionModel selectionModel = editor.getSelectionModel();
-        return selectionModel.getSelectionStartPosition().getLine();
+
+        if (editor == null) {
+            logger.info("Not a text editor, skipping...");
+            return null;
+        } else {
+            final SelectionModel selectionModel = editor.getSelectionModel();
+            return selectionModel.getSelectionStartPosition().getLine();
+        }
     }
 }

@@ -41,6 +41,11 @@ public class FileHighlightService {
                 ServiceManager.getService(fileEditorManager.getProject(), CodeReviewService.class);
 
         final Editor textEditor = fileEditorManager.getSelectedTextEditor();
+        if (textEditor == null) {
+            logger.info("Not a text editor, skipping...");
+            return;
+        }
+
         final VirtualFile selectedFile = selectedFiles[0];
 
         if (!codeReviewService.inProgress()) {
